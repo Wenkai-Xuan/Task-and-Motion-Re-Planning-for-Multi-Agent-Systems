@@ -1,0 +1,44 @@
+<mujoco>
+  <compiler angle="radian" />
+
+  <visual>
+    <headlight ambient="0.1 0.1 0.1" />
+  </visual>
+
+  <asset>
+    <material name="white" rgba="1 1 1 1" />
+    <material name="goal" rgba="0 0 0 0.3" />
+  </asset>
+  
+  <option gravity="0 0 -9.8" />
+  <worldbody>
+    <body name="obj1" pos="0.384044719500927 0.3308102153746691 0.15100000000000002" quat="0.3840822831391089 -0.0 -0.0 -0.9232988680696242">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
+      <geom type="box" size="0.015 0.15 0.025" material="white" />
+      
+    </body>
+
+    <body name="obj2" pos="-0.3962268815398693 0.2638282630023196 0.551" quat="0.9966513769182127 -0.0 -0.0 -0.08176816548651868">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
+      <geom type="box" size="0.015 0.15 0.025" material="white" />
+      
+    </body>
+
+    <body name="obj3" pos="0.01674419724197708 0.3060225231116519 0.15100000000000002" quat="0.4044750638191502 0.0 0.0 0.9145490269791414">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
+      <geom type="box" size="0.015 0.15 0.025" material="white" />
+      
+    </body>
+
+    <body name="obj4" pos="-0.0016177694542610956 0.2607901687810228 0.551" quat="0.08132772488584517 -0.0 -0.0 -0.9966874139693409">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
+      <geom type="box" size="0.015 0.15 0.025" material="white" />
+      
+    </body>
+    
+  </worldbody>
+</mujoco>

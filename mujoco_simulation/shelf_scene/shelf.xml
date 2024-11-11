@@ -1,0 +1,43 @@
+<mujoco>
+  <compiler angle="radian" />
+
+  <visual>
+    <headlight ambient="0.1 0.1 0.1"/>
+  </visual>
+
+  <asset>
+    <material name="gray" rgba="0.35 0.35 0.35 0.7"/>
+  </asset>
+  
+  <option gravity="0 0 -9.8" />
+  <worldbody>
+    <body name="table" pos="0 0.05 0.55" quat="1 0 0 0">
+      <joint type="free" />
+      <geom type="box" size="1.5 1.25 0.025" material="gray"/>
+
+      <body name="shelf_base" pos="0.0 0.3 0.1" quat="1 0 0 0">
+        <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+        <geom type="box" size="0.6 0.15 0.025" material="gray"/>
+      
+        <body name="divider" pos="0.2 0.0 0.4" quat="1 0 0 0">
+          <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+          <geom type="box" size="0.025 0.1 0.45" material="gray"/>
+        </body>
+        <body name="divider2" pos="-0.2 0.0 0.4" quat="1 0 0 0">
+          <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+          <geom type="box" size="0.025 0.1 0.45" material="gray"/>
+        </body>
+        <body name="level1" pos="0.0 0.0 0.4" quat="1 0 0 0">
+          <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+          <geom type="box" size="0.6 0.15 0.025" material="gray"/>
+        </body>
+        <body name="level2" pos="0.0 0.0 0.8" quat="1 0 0 0">
+          <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+          <geom type="box" size="0.6 0.15 0.025" material="gray"/>
+        </body>
+      </body>
+    </body>
+
+    
+  </worldbody>
+</mujoco>

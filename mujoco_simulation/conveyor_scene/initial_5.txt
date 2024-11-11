@@ -1,0 +1,7 @@
+[{'objects': array([{'goal_pos': array([0.99165794, 0.88015619, 0.135     ]), 'goal_quat': array([ 0.87857692, -0.        , -0.        , -0.47760088]), 'shape': array([0.18, 0.2 , 0.17]), 'start_pos': array([-0.01340796,  0.5739036 ,  0.135     ]), 'start_quat': array([0.77371179, 0.        , 0.        , 0.63353774])},
+       {'goal_pos': array([-0.97108162, -0.07812088,  0.095     ]), 'goal_quat': array([0.52469642, 0.        , 0.        , 0.85128941]), 'shape': array([0.08, 0.08, 0.09]), 'start_pos': array([ 0.11954686, -0.09735814,  0.095     ]), 'start_quat': array([ 0.36617593, -0.        , -0.        , -0.93054564])}],
+      dtype=object), 'robots': array([{'base_pos': array([-0.5, -0.4,  0. ]), 'base_quat': array([1., 0., 0., 0.]), 'type': 'ur5_vacuum'},
+       {'base_pos': array([ 0.6, -0.4,  0. ]), 'base_quat': array([0., 0., 0., 1.]), 'type': 'ur5_vacuum'},
+       {'base_pos': array([-0.5,  0.4,  0. ]), 'base_quat': array([1., 0., 0., 0.]), 'type': 'ur5_vacuum'},
+       {'base_pos': array([0.6, 0.4, 0. ]), 'base_quat': array([0., 0., 0., 1.]), 'type': 'ur5_vacuum'}],
+      dtype=object)}]

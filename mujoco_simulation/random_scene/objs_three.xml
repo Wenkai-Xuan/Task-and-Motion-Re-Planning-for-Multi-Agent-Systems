@@ -1,0 +1,39 @@
+<mujoco>
+  <compiler angle="radian" />
+
+  <visual>
+    <headlight ambient="0.1 0.1 0.1"/>
+  </visual>
+
+  <asset>
+    <material name="white" rgba="1 1 1 1"/>
+    <material name="goal" rgba="0 0 0 0.3"/>
+  </asset>
+  
+  <option gravity="0 0 -9.8" />
+  <worldbody>
+    <body name="obj1" pos="0.65363407 1.29098271 0.185" quat="0.84497859 0 0 0.53480013">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+      <geom type="box" size="0.095 0.025 0.135" material="white"/>
+      <!--geom type="box" size="0.1 0.2 0.3" rgba="0.9 0 0 1"/-->
+    </body>
+
+    <body name="obj2" pos="0.69461814 -0.58824875 0.135" quat="0.88349256 0 0 -0.46844519">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+      <geom type="box" size="0.115 0.11 0.085" material="white"/>
+      <!--geom type="box" size="0.1 0.2 0.3" rgba="0.9 0 0 1"/-->
+    </body>
+
+    <body name="obj3" pos="-0.46952242 0.08354221 0.095" quat="0.48991374 0 0 -0.87177091">
+      <joint type="free" />
+      <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01"/>
+      <geom type="box" size="0.095 0.11 0.045" material="white"/>
+      <!--geom type="box" size="0.1 0.2 0.3" rgba="0.9 0 0 1"/-->
+    </body>
+
+
+    
+  </worldbody>
+</mujoco>

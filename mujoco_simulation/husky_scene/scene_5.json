@@ -1,0 +1,529 @@
+{
+    "Objects": {
+        "obj1": {
+            "goal": {
+                "abs_pos": "[ 0.74566464 -0.6309312   0.545     ]",
+                "abs_quat": "[ 0.94136284 -0.         -0.         -0.33739591]",
+                "parent": "table",
+                "pos": "[ 0.74566464 -0.6809312   0.145     ]",
+                "quat": "[ 0.94136284 -0.         -0.         -0.33739591]"
+            },
+            "size": "[0.19 0.23 0.19 0.01]",
+            "start": {
+                "abs_pos": "[-0.72512275 -0.58829561  0.545     ]",
+                "abs_quat": "[ 0.47373524 -0.         -0.         -0.88066731]",
+                "parent": "table",
+                "pos": "[-0.72512275 -0.63829561  0.145     ]",
+                "quat": "[ 0.47373524 -0.         -0.         -0.88066731]"
+            }
+        },
+        "obj2": {
+            "goal": {
+                "abs_pos": "[-0.38056775 -0.27934932  0.56      ]",
+                "abs_quat": "[0.10066103 0.         0.         0.99492078]",
+                "parent": "table",
+                "pos": "[-0.38056775 -0.32934932  0.16      ]",
+                "quat": "[0.10066103 0.         0.         0.99492078]"
+            },
+            "size": "[0.3  0.11 0.22 0.01]",
+            "start": {
+                "abs_pos": "[ 0.09749255 -0.31601153  0.56      ]",
+                "abs_quat": "[ 0.56349039 -0.         -0.         -0.82612262]",
+                "parent": "table",
+                "pos": "[ 0.09749255 -0.36601153  0.16      ]",
+                "quat": "[ 0.56349039 -0.         -0.         -0.82612262]"
+            }
+        },
+        "obj3": null,
+        "obj4": null
+    },
+    "Obstacles": {
+        "World": {
+            "pose": {
+                "abs_pos": "[0. 0. 0.]",
+                "abs_quat": "[1. 0. 0. 0.]",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "base_link": {
+            "pose": {
+                "abs_pos": "[ 0.   -1.1   0.15]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "base_link>dual_arm_bulkhead_joint": {
+            "pose": {
+                "abs_pos": "[ 0.    -1.1    0.374]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0.    0.    0.224]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "base_link>front_left_wheel": {
+            "pose": {
+                "abs_pos": "[-0.2854  -0.844    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link",
+                "pos": "[0.256   0.2854  0.03282]",
+                "quat": "[0.70710678 0.         0.         0.70710678]"
+            }
+        },
+        "base_link>front_right_wheel": {
+            "pose": {
+                "abs_pos": "[ 0.2854  -0.844    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link",
+                "pos": "[ 0.256   -0.2854   0.03282]",
+                "quat": "[0.70710678 0.         0.         0.70710678]"
+            }
+        },
+        "base_link>rear_left_wheel": {
+            "pose": {
+                "abs_pos": "[-0.2854  -1.356    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link",
+                "pos": "[-0.256    0.2854   0.03282]",
+                "quat": "[0.70710678 0.         0.         0.70710678]"
+            }
+        },
+        "base_link>rear_right_wheel": {
+            "pose": {
+                "abs_pos": "[ 0.2854  -1.356    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link",
+                "pos": "[-0.256   -0.2854   0.03282]",
+                "quat": "[0.70710678 0.         0.         0.70710678]"
+            }
+        },
+        "base_link_0": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[ 0.   -1.1   0.25]",
+                "abs_quat": "[-0.70710678  0.          0.          0.70710678]",
+                "parent": "base_link",
+                "pos": "[0.  0.  0.1]",
+                "quat": "[0. 0. 0. 1.]"
+            },
+            "shape": "box",
+            "size": "[1.      0.5709  0.22375 0.     ]"
+        },
+        "base_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/base_link_1.ply'",
+            "pose": {
+                "abs_pos": "[ 0.   -1.1   0.15]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "dual_arm_bulkhead_joint": {
+            "pose": {
+                "abs_pos": "[ 0.    -1.1    0.374]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link>dual_arm_bulkhead_joint",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "dual_arm_bulkhead_link": {
+            "pose": {
+                "abs_pos": "[ 0.    -1.1    0.374]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "dual_arm_bulkhead_joint",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "dual_arm_bulkhead_link>left_arm_bulkhead_joint": {
+            "pose": {
+                "abs_pos": "[-0.14891 -0.9775   0.50771]",
+                "abs_quat": "[ 0.92387946  0.         -0.38268361  0.        ]",
+                "parent": "dual_arm_bulkhead_link",
+                "pos": "[0.1225  0.14891 0.13371]",
+                "quat": "[ 0.65328143 -0.27059818 -0.27059818 -0.65328143]"
+            }
+        },
+        "dual_arm_bulkhead_link>right_arm_bulkhead_joint": {
+            "pose": {
+                "abs_pos": "[ 0.14891 -0.9775   0.50771]",
+                "abs_quat": "[0.92387946 0.         0.38268361 0.        ]",
+                "parent": "dual_arm_bulkhead_link",
+                "pos": "[ 0.1225  -0.14891  0.13371]",
+                "quat": "[ 0.65328143  0.27059818  0.27059818 -0.65328143]"
+            }
+        },
+        "dual_arm_bulkhead_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/dual_arm_bulkhead_link_1.ply'",
+            "pose": {
+                "abs_pos": "[ 0.    -1.1    0.374]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0.    0.    0.224]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "front_bumper_extension_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/front_bumper_extension_link_1.ply'",
+            "pose": {
+                "abs_pos": "[-1.07913678e-16 -6.14000000e-01  2.41000000e-01]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0.486 0.    0.091]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "front_bumper_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/front_bumper_link_1.ply'",
+            "pose": {
+                "abs_pos": "[-1.07913678e-16 -6.14000000e-01  2.41000000e-01]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0.486 0.    0.091]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "front_left_wheel": {
+            "pose": {
+                "abs_pos": "[-0.2854  -0.844    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link>front_left_wheel",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "front_left_wheel_link": {
+            "pose": {
+                "abs_pos": "[-0.2854  -0.844    0.18282]",
+                "abs_quat": "[ 0.70710678 -0.          0.         -0.70710678]",
+                "parent": "front_left_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.         -0.70710678]"
+            }
+        },
+        "front_left_wheel_link_0": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[-0.2854  -0.844    0.18282]",
+                "abs_quat": "[-0.70710678  0.          0.70710678  0.        ]",
+                "parent": "front_left_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[0.         0.70710678 0.         0.70710678]"
+            },
+            "shape": "cylinder",
+            "size": "[0.     0.     0.1143 0.1651]"
+        },
+        "front_left_wheel_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/front_left_wheel_link_1.ply'",
+            "pose": {
+                "abs_pos": "[-0.2854  -0.844    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "front_left_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "front_right_wheel": {
+            "pose": {
+                "abs_pos": "[ 0.2854  -0.844    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link>front_right_wheel",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "front_right_wheel_link": {
+            "pose": {
+                "abs_pos": "[ 0.2854  -0.844    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "front_right_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            }
+        },
+        "front_right_wheel_link_0": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[ 0.2854  -0.844    0.18282]",
+                "abs_quat": "[-0.70710678  0.          0.70710678  0.        ]",
+                "parent": "front_right_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[0.         0.70710678 0.         0.70710678]"
+            },
+            "shape": "cylinder",
+            "size": "[0.     0.     0.1143 0.1651]"
+        },
+        "front_right_wheel_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/front_right_wheel_link_1.ply'",
+            "pose": {
+                "abs_pos": "[ 0.2854  -0.844    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "front_right_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "inertial_link": {
+            "pose": {
+                "abs_pos": "[ 0.   -1.1   0.15]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "left_arm_bulkhead_joint": {
+            "pose": {
+                "abs_pos": "[-0.14891 -0.9775   0.50771]",
+                "abs_quat": "[ 0.92387946  0.         -0.38268361  0.        ]",
+                "parent": "dual_arm_bulkhead_link>left_arm_bulkhead_joint",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "left_arm_bulkhead_link": {
+            "pose": {
+                "abs_pos": "[-0.14891 -0.9775   0.50771]",
+                "abs_quat": "[ 0.92387946  0.         -0.38268361  0.        ]",
+                "parent": "left_arm_bulkhead_joint",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "rear_bumper_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/rear_bumper_link_1.ply'",
+            "pose": {
+                "abs_pos": "[ 1.0658141e-16 -1.5800000e+00  2.4100000e-01]",
+                "abs_quat": "[-0.70710584  0.          0.          0.70710772]",
+                "parent": "base_link",
+                "pos": "[-0.48   0.     0.091]",
+                "quat": "[1.32679e-06 0.00000e+00 0.00000e+00 1.00000e+00]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "rear_left_wheel": {
+            "pose": {
+                "abs_pos": "[-0.2854  -1.356    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link>rear_left_wheel",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "rear_left_wheel_link": {
+            "pose": {
+                "abs_pos": "[-0.2854  -1.356    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "rear_left_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            }
+        },
+        "rear_left_wheel_link_0": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[-0.2854  -1.356    0.18282]",
+                "abs_quat": "[-0.70710678  0.          0.70710678  0.        ]",
+                "parent": "rear_left_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[0.         0.70710678 0.         0.70710678]"
+            },
+            "shape": "cylinder",
+            "size": "[0.     0.     0.1143 0.1651]"
+        },
+        "rear_left_wheel_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/rear_left_wheel_link_1.ply'",
+            "pose": {
+                "abs_pos": "[-0.2854  -1.356    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "rear_left_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "rear_right_wheel": {
+            "pose": {
+                "abs_pos": "[ 0.2854  -1.356    0.18282]",
+                "abs_quat": "[0. 0. 0. 1.]",
+                "parent": "base_link>rear_right_wheel",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "rear_right_wheel_link": {
+            "pose": {
+                "abs_pos": "[ 0.2854  -1.356    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "rear_right_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            }
+        },
+        "rear_right_wheel_link_0": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[ 0.2854  -1.356    0.18282]",
+                "abs_quat": "[-0.70710678  0.          0.70710678  0.        ]",
+                "parent": "rear_right_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[0.         0.70710678 0.         0.70710678]"
+            },
+            "shape": "cylinder",
+            "size": "[0.     0.     0.1143 0.1651]"
+        },
+        "rear_right_wheel_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/rear_right_wheel_link_1.ply'",
+            "pose": {
+                "abs_pos": "[ 0.2854  -1.356    0.18282]",
+                "abs_quat": "[-0.70710678  0.         -0.         -0.70710678]",
+                "parent": "rear_right_wheel",
+                "pos": "[-0. -0. -0.]",
+                "quat": "[-0.70710678  0.          0.          0.70710678]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "right_arm_bulkhead_joint": {
+            "pose": {
+                "abs_pos": "[ 0.14891 -0.9775   0.50771]",
+                "abs_quat": "[0.92387946 0.         0.38268361 0.        ]",
+                "parent": "dual_arm_bulkhead_link>right_arm_bulkhead_joint",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "right_arm_bulkhead_link": {
+            "pose": {
+                "abs_pos": "[ 0.14891 -0.9775   0.50771]",
+                "abs_quat": "[0.92387946 0.         0.38268361 0.        ]",
+                "parent": "right_arm_bulkhead_joint",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            }
+        },
+        "table": {
+            "contact": 1,
+            "pose": {
+                "abs_pos": "[0.   0.05 0.4 ]",
+                "abs_quat": "[1. 0. 0. 0.]",
+                "parent": "table_base",
+                "pos": "[ 0.    0.05 -0.05]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "shape": "box",
+            "size": "[2.3  1.44 0.05 0.02]"
+        },
+        "table_base": {
+            "contact": 0,
+            "pose": {
+                "abs_pos": "[0.   0.   0.45]",
+                "abs_quat": "[1. 0. 0. 0.]",
+                "parent": "World",
+                "pos": "[0.   0.   0.45]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "size": "[0.03]"
+        },
+        "top_chassis_link_1": {
+            "contact": 0,
+            "mesh": "mesh:'/home/vTamp/rai-robotModels/husky/meshes/top_chassis_link_1.ply'",
+            "pose": {
+                "abs_pos": "[ 0.   -1.1   0.15]",
+                "abs_quat": "[0.70710678 0.         0.         0.70710678]",
+                "parent": "base_link",
+                "pos": "[0. 0. 0.]",
+                "quat": "[1. 0. 0. 0.]"
+            },
+            "shape": "mesh",
+            "size": "[]"
+        },
+        "top_coll_left": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[ 0.15 -1.1   0.5 ]",
+                "abs_quat": "[-0.65321481  0.27075895 -0.27075895  0.65321481]",
+                "parent": "base_link",
+                "pos": "[ 0.   -0.15  0.35]",
+                "quat": "[ 0.          0.         -0.38291098  0.92378524]"
+            },
+            "shape": "box",
+            "size": "[0.8  0.2  0.05 0.  ]"
+        },
+        "top_coll_middle": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[ 0.   -1.1   0.55]",
+                "abs_quat": "[-0.70710678  0.          0.          0.70710678]",
+                "parent": "base_link",
+                "pos": "[0.  0.  0.4]",
+                "quat": "[0. 0. 0. 1.]"
+            },
+            "shape": "box",
+            "size": "[0.8  0.2  0.05 0.  ]"
+        },
+        "top_coll_right": {
+            "contact": -2,
+            "pose": {
+                "abs_pos": "[-0.15 -1.1   0.5 ]",
+                "abs_quat": "[-0.65321481 -0.27075895  0.27075895  0.65321481]",
+                "parent": "base_link",
+                "pos": "[0.   0.15 0.35]",
+                "quat": "[0.         0.         0.38291098 0.92378524]"
+            },
+            "shape": "box",
+            "size": "[0.8  0.2  0.05 0.  ]"
+        }
+    },
+    "Robots": {
+        "a0_": {
+            "base_pose": {
+                "pos": "[ 0. -0.  0.]",
+                "quat": "[0.70710678 0.         0.         0.70710678]"
+            },
+            "end_effector_type": 1,
+            "home_pose": "[ 0.    0.5  -1.2   0.    1.57  1.57]",
+            "initial_pose": "[ 0.    0.5  -1.2   0.    1.57  1.57]",
+            "parent": "left_arm_bulkhead_joint",
+            "type": 0
+        },
+        "a1_": {
+            "base_pose": {
+                "pos": "[0. 0. 0.]",
+                "quat": "[0.70710678 0.         0.         0.70710678]"
+            },
+            "end_effector_type": 1,
+            "home_pose": "[ 0.    0.5  -1.2   0.    1.57  1.57]",
+            "initial_pose": "[ 0.    0.5  -1.2   0.    1.57  1.57]",
+            "parent": "right_arm_bulkhead_joint",
+            "type": 0
+        }
+    }
+}
