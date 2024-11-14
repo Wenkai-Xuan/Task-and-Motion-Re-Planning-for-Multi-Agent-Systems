@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R
 import pandas as pd
 import xml.etree.ElementTree as ET
 import random
+import mediapy as media
 
 
 # xml_path = 'scene.xml' #xml file (assumes this is in the same folder as this file)
@@ -19,7 +20,7 @@ file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-df = pd.read_parquet('samples_000010000_to_000012113.parquet')
+df = pd.read_parquet('samples_000000000_to_000001376.parquet')
 
 
 
@@ -29,35 +30,6 @@ button_middle = False
 button_right = False
 lastx = 0
 lasty = 0
-
-def quat2ang_vel(q1, q2, delta_t):
-    q1 = np.array(q1)
-    q2 = np.array(q2)
-    # Normalize quaternions (in case they aren't normalized already)
-    q1 = q1 / np.linalg.norm(q1)
-    q2 = q2 / np.linalg.norm(q2)
-
-    # Calculate the relative rotation quaternion
-    delta_q = R.from_quat(q2).inv() * R.from_quat(q1)
-
-    # Extract the vector part of the relative quaternion
-    delta_q_vec = delta_q.as_rotvec()  # This is the angular velocity vector
-
-    # Compute angular velocity
-    ang_vel = delta_q_vec / delta_t
-
-    return ang_vel.tolist()
-
-def full_vel(p1,p2,q1,q2, delta_t):
-    p1 = np.array(p1)
-    p2 = np.array(p2)
-    pos_vel = (p2 - p1) / delta_t
- 
-    ang_vel = quat2ang_vel(q1, q2, delta_t)
-
-    vel = pos_vel.tolist() + ang_vel
-
-    return vel
 
 def add_physics(obj_num, skip_count):
     nums = list(range(obj_num))
@@ -104,7 +76,7 @@ def controller(model, data):
 def keyboard(window, key, scancode, act, mods):
     global current_step
     global max_steps
-    global frames
+    global frame
     global physics_flag
 
     # Check for keyboard input
@@ -133,7 +105,7 @@ def keyboard(window, key, scancode, act, mods):
             current_step = max_steps - 1        
         
     if act == glfw.PRESS and key == glfw.KEY_ENTER:
-        frames = not frames
+        frame = not frame
     
     if act == glfw.PRESS and key == glfw.KEY_P:
         physics_flag = True
@@ -396,83 +368,69 @@ init_controller(model,data)
 #set the controller
 mj.set_mjcb_control(controller)
 
+# enable joint visualization option:
+scene_option = mj.MjvOption()
+scene_option.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
+
+duration = 3.8  # (seconds)
+framerate = 60  # (Hz)
 
 current_step = 0
 max_steps = length
 step_size = 1.0 / max_steps
-frames = False
+frame = False
+frames = []
 physics_flag = False
 skip_flag = False
 skip_nums = []
 skip_idx = None
-while not glfw.window_should_close(window):
-    time_prev = data.time
-    # while (data.time - time_prev < step_size):
-    #     mj.mj_step(model, data)
-    
-    if current_step >= max_steps:
-        break
+with mj.Renderer(model) as renderer:
+    while data.time < duration:
+        # # set the qpos values of current step
+        # for k in range(robot_num):
+        #     data.qpos[6*k:6*k+6] = joint_traj[k][current_step][0:6]
 
-    #check add physical simulation or not
-    if physics_flag:
-        Y_or_n = input("Please decide whether to add physical simulation to objects specifically or not[Y/n]: ")
-        if (Y_or_n == "Y"):
-            skip_idx = int(input("Please enter the index of the object you want to add physical simulation to: "))
-            if (skip_idx in range(obj_num)):
-                skip_flag = True
-                # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
-        else:
-            skip_count = int(input("Please decide how many objects you want to add physical simulation to: "))
-            if (skip_count > obj_num):
-                # skip_count = int(input(f"The current number of objects is {obj_num}, please enter a number less or equal to it."))
-                print(f"The current number of objects is {obj_num}, please enter a number less or equal to it.")
-            else:
-                skip_nums += add_physics(obj_num, skip_count)
-                skip_flag = True
-                # data.qvel[:] = 0 #set the initial velocity to zero
-                for l in skip_nums:
-                    data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
-                                                                              ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
-                                                                              ,model.opt.timestep)
-    if skip_flag:
-        physics_flag = False
-
-    # set the qpos values of current step
-    for k in range(robot_num):
-        data.qpos[6*k:6*k+6] = joint_traj[k][current_step][0:6]
-
-    for l in range(obj_num):
-        if l in skip_nums or l == skip_idx:
-            # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-            continue
-        else:
-            data.qpos[6*robot_num+7*l:6*robot_num+7*l+7] = obj_pos[l][current_step][0:3] + obj_quat[l][current_step][0:4]
-
-    if frames:
-        current_step += 1
-
-    # Update simulation state based on current step
-    # print(data.qpos[26])
-    # data_tem = mj.MjData(model)
-    # print(data_tem.qpos[26])
-    if not physics_flag:
+        # for l in range(obj_num):
+        #     if l in skip_nums or l == skip_idx:
+        #         # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
+        #         continue
+        #     else:
+        #         data.qpos[6*robot_num+7*l:6*robot_num+7*l+7] = obj_pos[l][current_step][0:3] + obj_quat[l][current_step][0:4]
+        
         mj.mj_step(model, data)
-    viewport_width, viewport_height = glfw.get_framebuffer_size(
-            window)
-    viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
+        if len(frames) < data.time * framerate:
+            renderer.update_scene(data, scene_option=scene_option)
+            pixels = renderer.render()
+            frames.append(pixels)
+        
+        
+        
 
-    # collisoin detection
-    # for contact in data.contact:
-    #     if contact.geom1 < model.ngeom and contact.geom2 < model.ngeom:
-    #         # print(f"Collision detected between {contact.geom1} and {contact.geom2}")
-    #         print(f"Collision detected with distance {contact.dist} at contact point {contact.pos}")
+        # if frame:
+        #     current_step += 1
 
-    # Render the scene
-    mj.mjv_updateScene(model, data, opt, None, cam,
-                        mj.mjtCatBit.mjCAT_ALL.value, scene)
-    mj.mjr_render(viewport, scene, context)
-    glfw.swap_buffers(window)
-    glfw.poll_events()
+        # # Update simulation state based on current step
+        # # print(data.qpos[26])
+        # # data_tem = mj.MjData(model)
+        # # print(data_tem.qpos[26])
+        # mj.mj_step(model, data)
+        # viewport_width, viewport_height = glfw.get_framebuffer_size(
+        #         window)
+        # viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
 
+        # # collisoin detection
+        # # for contact in data.contact:
+        # #     if contact.geom1 < model.ngeom and contact.geom2 < model.ngeom:
+        # #         # print(f"Collision detected between {contact.geom1} and {contact.geom2}")
+        # #         print(f"Collision detected with distance {contact.dist} at contact point {contact.pos}")
+
+        # # Render the scene
+        # mj.mjv_updateScene(model, data, opt, None, cam,
+        #                     mj.mjtCatBit.mjCAT_ALL.value, scene)
+        # mj.mjr_render(viewport, scene, context)
+        # glfw.swap_buffers(window)
+        # glfw.poll_events()
+
+media.show_video(frames, fps=framerate)
 
 glfw.terminate()
