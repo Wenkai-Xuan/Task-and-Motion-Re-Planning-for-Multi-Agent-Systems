@@ -371,6 +371,8 @@ mj.mjv_defaultCamera(cam)
 mj.mjv_defaultOption(opt)
 scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
+# opt.label = 1  # Enable visualization of all the labels
+opt.label = mj.mjtLabel.mjLABEL_BODY # Enable visualization of body labels
 
 # install GLFW mouse and keyboard callbacks
 glfw.set_key_callback(window, keyboard)
@@ -417,7 +419,7 @@ while not glfw.window_should_close(window):
     if physics_flag:
         Y_or_n = input("Please decide whether to add physical simulation to objects specifically or not[Y/n]: ")
         if (Y_or_n == "Y"):
-            skip_idx = int(input("Please enter the index of the object you want to add physical simulation to: "))
+            skip_idx = int(input("Please enter the index of the object you want to add physical simulation to: ")) - 1  #the index of obj is one less than its name number
             if (skip_idx in range(obj_num)):
                 skip_flag = True
                 # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
