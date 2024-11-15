@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation as R
 import pandas as pd
 import xml.etree.ElementTree as ET
 import random
+import time
 
 
 # xml_path = 'scene.xml' #xml file (assumes this is in the same folder as this file)
@@ -30,21 +31,15 @@ button_right = False
 lastx = 0
 lasty = 0
 
-def quat2ang_vel(q1, q2, delta_t):
+def quat2ang_vel(q1, q2, dt):
     q1 = np.array(q1)
     q2 = np.array(q2)
-    # Normalize quaternions (in case they aren't normalized already)
-    q1 = q1 / np.linalg.norm(q1)
-    q2 = q2 / np.linalg.norm(q2)
-
-    # Calculate the relative rotation quaternion
-    delta_q = R.from_quat(q2).inv() * R.from_quat(q1)
-
-    # Extract the vector part of the relative quaternion
-    delta_q_vec = delta_q.as_rotvec()  # This is the angular velocity vector
 
     # Compute angular velocity
-    ang_vel = delta_q_vec / delta_t
+    ang_vel = (2 / dt) * np.array([
+        q1[0]*q2[1] - q1[1]*q2[0] - q1[2]*q2[3] + q1[3]*q2[2],
+        q1[0]*q2[2] + q1[1]*q2[3] - q1[2]*q2[0] - q1[3]*q2[1],
+        q1[0]*q2[3] - q1[1]*q2[2] + q1[2]*q2[1] - q1[3]*q2[0]])
 
     return ang_vel.tolist()
 
@@ -407,8 +402,10 @@ physics_flag = False
 skip_flag = False
 skip_nums = []
 skip_idx = None
+frame_rate = 120
 while not glfw.window_should_close(window):
-    time_prev = data.time
+    start_time = time.time()
+    time_prev = data.time  #the total time simulation spent, minimal slot is model.opt.timestep
     # while (data.time - time_prev < step_size):
     #     mj.mj_step(model, data)
     
@@ -421,8 +418,13 @@ while not glfw.window_should_close(window):
         if (Y_or_n == "Y"):
             skip_idx = int(input("Please enter the index of the object you want to add physical simulation to: ")) - 1  #the index of obj is one less than its name number
             if (skip_idx in range(obj_num)):
+                skip_nums += [skip_idx]
                 skip_flag = True
                 # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
+                data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = full_vel(obj_pos[skip_idx][current_step-1][0:3],obj_pos[skip_idx][current_step][0:3]
+                                                                              ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
+                                                                              ,1/frame_rate)
+                print(data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6])
         else:
             skip_count = int(input("Please decide how many objects you want to add physical simulation to: "))
             if (skip_count > obj_num):
@@ -435,7 +437,7 @@ while not glfw.window_should_close(window):
                 for l in skip_nums:
                     data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
                                                                               ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
-                                                                              ,model.opt.timestep)
+                                                                              ,1/frame_rate)
     if skip_flag:
         physics_flag = False
 
@@ -444,7 +446,7 @@ while not glfw.window_should_close(window):
         data.qpos[6*k:6*k+6] = joint_traj[k][current_step][0:6]
 
     for l in range(obj_num):
-        if l in skip_nums or l == skip_idx:
+        if l in skip_nums:
             # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
             continue
         else:
@@ -475,6 +477,11 @@ while not glfw.window_should_close(window):
     mj.mjr_render(viewport, scene, context)
     glfw.swap_buffers(window)
     glfw.poll_events()
+
+    # control the execution time of each while loop to be 1/frame_rate, so one loop is one frame
+    remain_time = 1/frame_rate - (time.time()-start_time)
+    if remain_time > 0:
+        time.sleep(remain_time)
 
 
 glfw.terminate()
