@@ -485,3 +485,15 @@ while not glfw.window_should_close(window):
 
 
 glfw.terminate()
+
+# output the new positions of the objects only when they get a new position
+if (len(skip_nums) > 0):
+    for l in range(obj_num):
+        print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
+
+    obj_output = []
+    for l in range(obj_num):
+            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), table_gap)]  #add the table gap
+            obj_output.append({f'obj{l+1}': {'pos': abs_objpos, 'quat': data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()}})
+    with open(f'{scene_flag}_obj_output_{sample_indx}.json', 'w') as file:
+            json.dump(obj_output, file, indent=4)
