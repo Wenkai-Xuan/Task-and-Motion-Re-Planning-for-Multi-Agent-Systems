@@ -15,12 +15,12 @@ simend = 2 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
-sample_indx = 288  #decide which sample to read and show
+sample_indx = 520  #decide which sample to read and show
 file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-df = pd.read_parquet('samples_000010000_to_000012113.parquet')
+df = pd.read_parquet('samples_000080000_to_000080868.parquet')
 
 
 
@@ -230,7 +230,7 @@ else:
     scene_flag = "random"
     xml_path = 'scene_random.xml'
     rob_file = f'ur5e_{robot_num}.xml'
-    table_gap = [0, 0, 0.6]
+    table_gap = [0, 0.05, 0.55]
 
 # set the object file in scene file according to the number of objects
 tree = ET.parse(xml_path)
@@ -346,7 +346,11 @@ for robot_idx in range(robot_num):
 
 length = len(joint_traj[0])  #length of the trajectory
 
-
+# read the initial joint angles of robots
+start_pose = []
+for key in ini_scene['Robots']:  # key is the name of the robot
+    if ini_scene['Robots'][key] is not None:
+        start_pose.append(ini_scene['Robots'][key]['initial_pose'].tolist())
 
 #get the full path
 dirname = os.path.dirname(__file__)
@@ -430,6 +434,8 @@ while not glfw.window_should_close(window):
                                                                               ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
                                                                               ,1/frame_rate)
                 print(data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6])
+                for k in range(robot_num):
+                    start_pose[k] = data.qpos[6*k:6*k+6]  # record the joints of robots when objects dropped
         else:
             skip_count = int(input("Please decide how many objects you want to add physical simulation to: "))
             if (skip_count > obj_num):
@@ -443,6 +449,9 @@ while not glfw.window_should_close(window):
                     data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
                                                                               ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
                                                                               ,1/frame_rate)
+                for k in range(robot_num):
+                    start_pose[k] = data.qpos[6*k:6*k+6]  # record the joints of robots when objects dropped
+    
     if skip_flag:
         physics_flag = False
 
@@ -499,9 +508,25 @@ if (len(skip_nums) > 0):
     for l in range(obj_num):
         print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
 
+    # output the new objs config
     obj_output = []
     for l in range(obj_num):
-            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), table_gap)]  #add the table gap
-            obj_output.append({f'obj{l+1}': {'pos': abs_objpos, 'quat': data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()}})
+            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])]  #add the table gap
+            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+                               'start_pos': abs_objpos, 
+                               'start_quat': data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist(),
+                               'goal_pos': ini_obj[l]['goal_pos'].tolist(),
+                               'goal_quat': ini_obj[l]['goal_quat'].tolist()})
+    obj_out = {'objects': obj_output}
     with open(f'{scene_flag}_obj_output_{sample_indx}.json', 'w') as file:
-            json.dump(obj_output, file, indent=4)
+            json.dump(obj_out, file, indent=4)
+    # output the robots config
+    robot_output = []
+    for k in range(robot_num):
+            robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                 'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                 'type': ini_rob[k]['type'],
+                                 'start_pose': start_pose[k].tolist()})
+    robot_out = {'robots': robot_output}
+    with open(f'{scene_flag}_robot_output_{sample_indx}.json', 'w') as file:
+            json.dump(robot_out, file, indent=4)
