@@ -31,6 +31,18 @@ button_right = False
 lastx = 0
 lasty = 0
 
+def diff(list1, list2, e):
+    if list1 == None or list2 == None:
+        return True
+
+    if len(list1) != len(list2):
+        raise ValueError("The lists must have the same length")
+    
+    for a, b in zip(list1, list2):
+        if abs(a - b) >= e:
+            return True  # If any pair has a difference greater than or equal to the error
+    return False
+
 def is_outside_range(xy, bound_x, bound_y):
     if xy[0] < -bound_x or xy[0] > bound_x or xy[1] < -bound_y or xy[1] > bound_y:
         return True
@@ -106,6 +118,7 @@ def keyboard(window, key, scancode, act, mods):
     global max_steps
     global frames
     global physics_flag
+    global record_flag
 
     # Check for keyboard input
     if act == glfw.PRESS and key == glfw.KEY_BACKSPACE:
@@ -134,6 +147,7 @@ def keyboard(window, key, scancode, act, mods):
         
     if act == glfw.PRESS and key == glfw.KEY_ENTER:
         frames = not frames
+        record_flag = not record_flag
     
     if act == glfw.PRESS and key == glfw.KEY_P:
         physics_flag = True
@@ -215,7 +229,7 @@ if ('divider' in df['scene'][sample_indx]['Obstacles'].keys()):
     scene_flag = "shelf"
     xml_path = 'scene_shelf.xml'
     rob_file = 'ur5e_shelf.xml'
-    table_gap = [0, 0.05, 0.55]
+    table_gap = [0, 0.05, 0.55]  # "abs_pos" of obstacle "table"
 elif ('base_link' in df['scene'][sample_indx]['Obstacles'].keys()):
     scene_flag = "husky"
     xml_path = 'scene_husky.xml'
@@ -402,13 +416,14 @@ init_controller(model,data)
 #set the controller
 mj.set_mjcb_control(controller)
 
-
+old_plan = [[1 for k in range(len(data.qpos))], [2 for k in range(len(data.qpos))]]
 current_step = 0
 max_steps = length
 step_size = 1.0 / max_steps
 frames = False
 physics_flag = False
 skip_flag = False
+record_flag = False
 skip_nums = []
 skip_idx = None
 frame_rate = 120
@@ -435,7 +450,8 @@ while not glfw.window_should_close(window):
                                                                               ,1/frame_rate)
                 print(data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6])
                 for k in range(robot_num):
-                    start_pose[k] = data.qpos[6*k:6*k+6]  # record the joints of robots when objects dropped
+                    start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
+                print(current_step)
         else:
             skip_count = int(input("Please decide how many objects you want to add physical simulation to: "))
             if (skip_count > obj_num):
@@ -450,10 +466,12 @@ while not glfw.window_should_close(window):
                                                                               ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
                                                                               ,1/frame_rate)
                 for k in range(robot_num):
-                    start_pose[k] = data.qpos[6*k:6*k+6]  # record the joints of robots when objects dropped
+                    start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
+                print(current_step)
     
     if skip_flag:
         physics_flag = False
+        record_flag = True
 
     # set the qpos values of current step
     for k in range(robot_num):
@@ -462,7 +480,7 @@ while not glfw.window_should_close(window):
     for l in range(obj_num):
         if l in skip_nums:
             # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.3, 1.3):
+            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
                 data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
             
             continue
@@ -472,12 +490,21 @@ while not glfw.window_should_close(window):
     if frames:
         current_step += 1
 
+    # # print(len(old_plan[-1]), len(old_plan[-2]))
+    # # print(len(data.qpos))
+    # if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
+    #     old_plan.append(data.qpos.tolist())
+    
     # Update simulation state based on current step
     # print(data.qpos[26])
     # data_tem = mj.MjData(model)
     # print(data_tem.qpos[26])
     if not physics_flag:
         mj.mj_step(model, data)
+    
+    if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
+        old_plan.append(data.qpos.tolist())
+
     viewport_width, viewport_height = glfw.get_framebuffer_size(
             window)
     viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
@@ -503,6 +530,14 @@ while not glfw.window_should_close(window):
 
 glfw.terminate()
 
+del old_plan[0:2] # correspond to definition of old_plan
+# # do we need to add the table gap?????
+# for i in range(len(old_plan)):
+#     for l in range(obj_num):
+#         old_plan[i][6*robot_num+7*l+3-1] += 0.05
+with open(f'old_plan_{scene_flag}.json', 'w') as file:
+    json.dump(old_plan, file, indent=4)
+
 # output the new positions of the objects only when they get a new position
 if (len(skip_nums) > 0):
     for l in range(obj_num):
@@ -511,7 +546,11 @@ if (len(skip_nums) > 0):
     # output the new objs config
     obj_output = []
     for l in range(obj_num):
-            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])]  #add the table gap
+            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])]  #add the gap between table,table_base
+            
+            if (scene_flag == "husky"):
+                abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4-0.05])]
+
             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
                                'start_pos': abs_objpos, 
                                'start_quat': data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist(),
@@ -522,11 +561,29 @@ if (len(skip_nums) > 0):
             json.dump(obj_out, file, indent=4)
     # output the robots config
     robot_output = []
-    for k in range(robot_num):
-            robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                 'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                 'type': ini_rob[k]['type'],
-                                 'start_pose': start_pose[k].tolist()})
-    robot_out = {'robots': robot_output}
-    with open(f'{scene_flag}_robot_output_{sample_indx}.json', 'w') as file:
-            json.dump(robot_out, file, indent=4)
+    if (scene_flag == "husky"):
+        for k in range(robot_num):
+                if (k == 0):
+                    robot_output.append({'parent': "left_arm_bulkhead_joint",
+                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                         'type': ini_rob[k]['type'],
+                                         'start_pose': start_pose[k]})
+                elif (k == 1):
+                    robot_output.append({'parent': "right_arm_bulkhead_joint",
+                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                         'type': ini_rob[k]['type'],
+                                         'start_pose': start_pose[k]})
+        robot_out = {'robots': robot_output}
+        with open(f'{scene_flag}_robot_output_{sample_indx}.json', 'w') as file:
+                json.dump(robot_out, file, indent=4)
+    else:
+        for k in range(robot_num):
+                robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                     'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                     'type': ini_rob[k]['type'],
+                                     'start_pose': start_pose[k]})
+        robot_out = {'robots': robot_output}
+        with open(f'{scene_flag}_robot_output_{sample_indx}.json', 'w') as file:
+                json.dump(robot_out, file, indent=4)
