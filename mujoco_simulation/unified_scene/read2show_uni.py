@@ -15,12 +15,12 @@ simend = 2 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
-sample_indx = 520  #decide which sample to read and show
+sample_indx = 5  #decide which sample to read and show
 file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-df = pd.read_parquet('samples_000080000_to_000080868.parquet')
+df = pd.read_parquet('samples_000010000_to_000012113.parquet')
 
 
 
@@ -30,6 +30,37 @@ button_middle = False
 button_right = False
 lastx = 0
 lasty = 0
+
+def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot):
+    Rx = np.array([
+        [1, 0, 0],
+        [0, -1, 0],
+        [0, 0, -1]
+    ])
+    Ry = np.array([
+        [0, 0, 1],
+        [0, 1, 0],
+        [-1, 0, 0]
+    ])
+    R_comb = np.matmul(Rx, Ry)
+    frame_pos = np.array(frame_pos)
+    frame_rot = np.array(frame_rot)
+    abs_pos = np.array(abs_pos)
+    abs_rot = np.array(abs_rot)
+    # print(frame_pos.dtype)
+
+    e_pos = abs_pos - frame_pos
+    frame_rot_inv = np.linalg.inv(frame_rot)
+    pos = np.dot(frame_rot_inv, e_pos) - np.array([0.135, 0, 0]) #the offset between the most end body frame and end-effector
+    rela_pos = np.matmul(np.linalg.inv(R_comb), pos)
+
+    frame_mat = np.matmul(frame_rot, R_comb)
+    rela_rot = np.matmul(np.linalg.inv(frame_mat), abs_rot)
+
+    # convert the rotation matrix to quaternion
+    rela_quat_xyzw = r2quat(rela_rot)
+    rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
+    return rela_pos, rela_quat
 
 def diff(list1, list2, e):
     if list1 == None or list2 == None:
@@ -90,7 +121,7 @@ def mjformat(array):
 def quat2r(quat_mujoco):
     #mujocoy quat is constant,x,y,z,
     #scipy quaut is x,y,z,constant
-    quat_scipy = np.array([quat_mujoco[3],quat_mujoco[0],quat_mujoco[1],quat_mujoco[2]])
+    quat_scipy = np.array([quat_mujoco[1],quat_mujoco[2],quat_mujoco[3],quat_mujoco[0]])
 
     r = R.from_quat(quat_scipy)
 
@@ -426,6 +457,7 @@ skip_flag = False
 record_flag = False
 skip_nums = []
 skip_idx = None
+attch_idx = None
 frame_rate = 120
 while not glfw.window_should_close(window):
     start_time = time.time()
@@ -441,6 +473,8 @@ while not glfw.window_should_close(window):
         Y_or_n = input("Please decide whether to add physical simulation to objects specifically or not[Y/n]: ")
         if (Y_or_n == "Y"):
             skip_idx = int(input("Please enter the index of the object you want to add physical simulation to: ")) - 1  #the index of obj is one less than its name number
+            attch_idx = int(input("Please enter the index of the object needs to be attached to robots: ")) - 1
+            rela_robot = int(input("Please enter the index of the reference robot: ")) # the robot used as the relative local frame
             if (skip_idx in range(obj_num)):
                 skip_nums += [skip_idx]
                 skip_flag = True
@@ -448,7 +482,7 @@ while not glfw.window_should_close(window):
                 data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = full_vel(obj_pos[skip_idx][current_step-1][0:3],obj_pos[skip_idx][current_step][0:3]
                                                                               ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
                                                                               ,1/frame_rate)
-                print(data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6])
+                print(f"velocity:{data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6]}")
                 for k in range(robot_num):
                     start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
                 print(current_step)
@@ -480,7 +514,7 @@ while not glfw.window_should_close(window):
     for l in range(obj_num):
         if l in skip_nums:
             # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
+            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.2, 1.2):
                 data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
             
             continue
@@ -504,6 +538,21 @@ while not glfw.window_should_close(window):
     
     if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
         old_plan.append(data.qpos.tolist())
+    
+    # calculate the dropped object (pos, quat) w.r.t grasping robot
+    # print(data.xpos[7]) # == print(data.xanchor[5])
+    # print(mj.mj_id2name(model,1,7+21))
+    
+    if (attch_idx != None):
+        # eef_pos = data.xpos[1+6 + 7*rela_robot]  #the most end body frame
+        # eef_xmat = data.xmat[1+6 + 7*rela_robot] #index 0 is the worldbody
+        eef_pos = data.geom_xpos[23 + 29*rela_robot]
+        eef_xmat = data.geom_xmat[23 + 29*rela_robot]
+        eef_mat = [eef_xmat[i:i+3] for i in range(0, len(eef_xmat), 3)]
+        rela_pos, rela_quat = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*attch_idx:6*robot_num+7*attch_idx+3].tolist(), [0, 0, 0.05])], 
+                quat2r(data.qpos[6*robot_num+7*attch_idx+3 : 6*robot_num+7*attch_idx+7]).as_matrix())
+        # rela_quat_xyzw = r2quat(rela_mat)
+        # rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
 
     viewport_width, viewport_height = glfw.get_framebuffer_size(
             window)
@@ -535,9 +584,9 @@ del old_plan[0:2] # correspond to definition of old_plan
 # for i in range(len(old_plan)):
 #     for l in range(obj_num):
 #         old_plan[i][6*robot_num+7*l+3-1] += 0.05
-with open(f'old_plan_{scene_flag}.json', 'w') as file:
-    json.dump(old_plan, file, indent=4)
-
+# with open(f'old_plan_{scene_flag}.json', 'w') as file:
+#     json.dump(old_plan, file, indent=4)
+# print([a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])])
 # output the new positions of the objects only when they get a new position
 if (len(skip_nums) > 0):
     for l in range(obj_num):
@@ -546,16 +595,32 @@ if (len(skip_nums) > 0):
     # output the new objs config
     obj_output = []
     for l in range(obj_num):
-            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])]  #add the gap between table,table_base
-            
-            if (scene_flag == "husky"):
-                abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4-0.05])]
+        abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])]  #add the gap between table,table_base
+        abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
+        goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
+        goal_quat = ini_obj[l]['goal_quat'].tolist()
+
+        if (scene_flag == "husky"):
+            abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4-0.05])]
+
+        if (l == attch_idx):
+            abs_objpos = rela_pos.tolist()
+            abs_objquat = rela_quat.tolist()
+            # goal_pos/quat still w.r.t "table"?
+            # goal_pos, goal_quat = rela_corrd(eef_pos, eef_mat, ini_obj[attch_idx]['goal_pos'], quat2r(ini_obj[attch_idx]['goal_quat']).as_matrix())
 
             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
-                               'start_pos': abs_objpos, 
-                               'start_quat': data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist(),
-                               'goal_pos': ini_obj[l]['goal_pos'].tolist(),
-                               'goal_quat': ini_obj[l]['goal_quat'].tolist()})
+                           'start_pos': abs_objpos, 
+                           'start_quat': abs_objquat,
+                           'goal_pos': goal_pos.tolist(),
+                           'goal_quat': goal_quat.tolist(),
+                           'parent': f'a{rela_robot}_pen_tip'})
+        else:
+            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+                            'start_pos': abs_objpos, 
+                            'start_quat': abs_objquat,
+                            'goal_pos': goal_pos,
+                            'goal_quat': goal_quat})
     obj_out = {'objects': obj_output}
     with open(f'{scene_flag}_obj_output_{sample_indx}.json', 'w') as file:
             json.dump(obj_out, file, indent=4)
