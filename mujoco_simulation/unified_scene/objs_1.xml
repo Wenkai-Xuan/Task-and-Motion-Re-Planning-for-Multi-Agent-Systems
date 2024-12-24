@@ -12,10 +12,10 @@
   
   <option gravity="0 0 -9.8" />
   <worldbody>
-    <body name="obj1" pos="0.11238713277295675 0.6919653677952426 0.15000000000000002" quat="0.7673372163093717 -0.0 -0.0 -0.6412437886378196">
+    <body name="obj1" pos="-0.0189405848282847 -0.33836799858663935 0.24" quat="0.9805563754385869 -0.0 -0.0 -0.19623759728130888">
       <joint type="free" />
       <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
-      <geom type="box" size="0.065 0.025 0.1" material="white" />
+      <geom type="box" size="0.07 0.17500000000000002 0.19" material="white" />
       
     </body>
     

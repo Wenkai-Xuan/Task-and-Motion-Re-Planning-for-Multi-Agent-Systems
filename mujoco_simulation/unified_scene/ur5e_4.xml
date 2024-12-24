@@ -60,7 +60,7 @@
 
   <worldbody>
     <light name="spotlight" mode="targetbodycom" target="wrist_2_link" pos="0 -1 2" />
-    <body name="base" pos="0.6324938350038213 -0.6256580312187061 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
+    <body name="base" pos="0.6598434875933261 -0.9163550373007783 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />
@@ -118,7 +118,7 @@
       </body>
     </body>
 
-    <body name="base_1" pos="-0.6443433844978482 0.6434033753323112 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
+    <body name="base_1" pos="-0.6022929315226149 0.9240593326658415 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />
@@ -176,7 +176,7 @@
       </body>
     </body>
 
-    <body name="base_2" pos="-0.673624251361045 -0.5725037892870579 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
+    <body name="base_2" pos="-0.5556239851561715 -0.3118939242859937 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />
@@ -234,7 +234,7 @@
       </body>
     </body>
 
-    <body name="base_3" pos="0.6854738008550719 0.5547584451734529 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
+    <body name="base_3" pos="0.4980734290854602 0.3041896289209305 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />

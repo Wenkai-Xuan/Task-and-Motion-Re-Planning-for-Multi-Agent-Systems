@@ -12,17 +12,17 @@
   
   <option gravity="0 0 -9.8" />
   <worldbody>
-    <body name="obj1" pos="-0.5359860456596122 -0.5819862851099491 0.245" quat="0.9904574501107537 -0.0 -0.0 -0.13781886489194345">
+    <body name="obj1" pos="0.11305489490475504 -0.28283367546734517 0.235" quat="0.25326247115480643 0.0 0.0 0.9673976021804896">
       <joint type="free" />
       <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
-      <geom type="box" size="0.13 0.1 0.195" material="white" />
+      <geom type="box" size="0.035 0.13 0.185" material="white" />
       
     </body>
 
-    <body name="obj2" pos="0.225863644784227 -0.32506095585505346 0.16" quat="0.9308495098086557 -0.0 -0.0 -0.365402777888983">
+    <body name="obj2" pos="0.487711945583746 -0.44980299605208107 0.195" quat="0.44999942289767436 0.0 0.0 0.8930288457780969">
       <joint type="free" />
       <inertial pos="0 0 0" mass="1" diaginertia="0.01 0.01 0.01" />
-      <geom type="box" size="0.18 0.065 0.11" material="white" />
+      <geom type="box" size="0.135 0.13 0.145" material="white" />
       
     </body>
     
