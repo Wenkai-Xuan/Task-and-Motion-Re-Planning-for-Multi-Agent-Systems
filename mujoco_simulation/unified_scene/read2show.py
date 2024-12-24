@@ -10,17 +10,17 @@ import random
 import time
 
 
-xml_path = 'scene_random.xml' #xml file (assumes this is in the same folder as this file)
+# xml_path = 'scene_conveyor.xml' #xml file (assumes this is in the same folder as this file)
 simend = 2 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
-sample_indx = 520  #decide which sample to read and show
+sample_indx = 25  #decide which sample to read and show
 file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-
+df = pd.read_parquet('samples_000000000_to_000001376.parquet')
 
 
 # For callback functions
@@ -217,23 +217,62 @@ def scroll(window, xoffset, yoffset):
                       yoffset, scene, cam)
 
 
-rob_file = 'ur5e_4.xml'
-objs_file = 'objs_3.xml'
+# set the current scene
+# check the number of objects and robots
+obj_num = df['obj_file'][sample_indx]['objects'].size
+robot_num = df['robot_file'][sample_indx]['robots'].size
+objs_file = f'objs_{obj_num}.xml'
 
-with open('random_obj_output_520.json', 'r') as file:
-    ini_obj_file = json.load(file)
+# check which the current scene is (shelf, husky, conveyor, random)
+if ('divider' in df['scene'][sample_indx]['Obstacles'].keys()):
+    scene_flag = "shelf"
+    xml_path = 'scene_shelf.xml'
+    rob_file = 'ur5e_shelf.xml'
+    table_gap = [0, 0.05, 0.55]  # "abs_pos" of obstacle "table"
+elif ('base_link' in df['scene'][sample_indx]['Obstacles'].keys()):
+    scene_flag = "husky"
+    xml_path = 'scene_husky.xml'
+    rob_file = 'ur5e_husky.xml'
+    table_gap = [0, 0, 0]
+elif ('table_left' in df['scene'][sample_indx]['Obstacles'].keys()):
+    scene_flag = "conveyor"
+    xml_path = 'scene_conveyor.xml'
+    rob_file = 'ur5e_conveyor.xml'
+    table_gap = [0, 0.05, 0.55]
+else:
+    scene_flag = "random"
+    xml_path = 'scene_random.xml'
+    rob_file = f'ur5e_{robot_num}.xml'
+    table_gap = [0, 0.05, 0.55]
 
-with open('random_robot_output_520.json', 'r') as file:
-    ini_rob_file = json.load(file)
-
+# set the object file in scene file according to the number of objects
+tree = ET.parse(xml_path)
+root = tree.getroot()
+i=0
+for include in root.iter('include'):
+    if (i==0):
+        include.set('file', rob_file)
+    else:
+        include.set('file', objs_file)
+    i += 1
+tree.write(xml_path)
 
 #load the initail data of robots and objects
-ini_obj = ini_obj_file['objects']
-ini_rob = ini_rob_file['robots']
+ini_obj = df['obj_file'][sample_indx]['objects'].tolist()
+ini_rob = df['robot_file'][sample_indx]['robots'].tolist()
+ini_scene = df['scene'][sample_indx]
 
 tree1 = ET.parse(objs_file)
 root1 = tree1.getroot()
 
+i = 0
+for geo in root1.iter('geom'):
+    # print(geo.attrib['size'])
+    mj_size = ini_obj[i]['shape']/2
+
+    geo.attrib['size'] = mjformat(mj_size)
+    tree1.write(objs_file)
+    i += 1
 
 i = 0
 for obj in root1.iter('body'):
@@ -247,49 +286,56 @@ for obj in root1.iter('body'):
     tree1.write(objs_file)
     i += 1    
 
-tree2 = ET.parse(rob_file)
-root2 = tree2.getroot()
+# husky scene is a little different, we use the absolute position values and we don't change the robot xml file
+if (scene_flag != "husky"):
+    tree2 = ET.parse(rob_file)
+    root2 = tree2.getroot()
 
-j = 0
-for rob in root2.iter('body'):
-    if rob.attrib['name'].startswith('base'):
-        # print(obj.attrib['name'])
-        mj_pos = ini_rob[j]['base_pos']
-        mj_quat = ini_rob[j]['base_quat']
-        rob.attrib['pos'] = mjformat(mj_pos)
-        rob.attrib['quat'] = mjformat(mj_quat)
- 
-        tree2.write(rob_file)
-        j += 1
+    j = 0
+    for rob in root2.iter('body'):
+        if rob.attrib['name'].startswith('base'):
+            # print(obj.attrib['name'])
+            mj_pos = ini_rob[j]['base_pos']
+            mj_quat = ini_rob[j]['base_quat']
+            rob.attrib['pos'] = mjformat(mj_pos)
+            rob.attrib['quat'] = mjformat(mj_quat)
+    
+            tree2.write(rob_file)
+            j += 1
 
 
 # read the traj data of robots and objects
-with open('old_plan_random.json', 'r') as file:
+with open(f'old_plan_{scene_flag}_{sample_indx}_rela.json', 'r') as file:
     traj = json.load(file)
 
 length = len(traj)  #length of the trajectory
 
-# load the replan traj
-with open('trajectory_random.json', 'r') as file:
-    traj2 = json.load(file)
+# load the replan traj if it exists
+try:
+    with open(f'trajectory_{scene_flag}_{sample_indx}_rela.json', 'r') as file:
+        traj2 = json.load(file)
 
-traj2_num = len(traj2['robots'][0]['steps']) #len of replan traj
-rob_num = len(traj2['robots'])
-obj_num = len(traj2['objs'])
-replan = [[] for n in range(traj2_num)]
+    traj2_num = len(traj2['robots'][0]['steps']) #len of replan traj
+    rob_num = len(traj2['robots'])
+    obj_num = len(traj2['objs'])
+    replan = [[] for n in range(traj2_num)]
 
-for i in range(traj2_num):
-    for j in range(rob_num):
-        replan[i] += traj2['robots'][j]['steps'][i]['joint_state']
-    
-    for k in range(obj_num):
-        no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], [0, 0.05, 0.6])]
-        replan[i] += (no_gap + traj2['objs'][k]['steps'][i]['quat'])
+    for i in range(traj2_num):
+        for j in range(rob_num):
+            replan[i] += traj2['robots'][j]['steps'][i]['joint_state']
+        
+        for k in range(obj_num):
+            no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], [0, 0.05, 0.55])]
+            if scene_flag=='husky':
+                no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], [0, 0, 0.05])]
+            replan[i] += (no_gap + traj2['objs'][k]['steps'][i]['quat'])
 
-traj += replan
+    traj += replan
 
-with open(f'full_plan.json', 'w') as file:
-    json.dump(traj, file, indent=4)
+    with open(f'full_plan_{scene_flag}_{sample_indx}_rela.json', 'w') as file:
+        json.dump(traj, file, indent=4)
+except:
+    traj2_num = 0
 
 #get the full path
 dirname = os.path.dirname(__file__)
@@ -316,6 +362,7 @@ scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 # opt.label = 1  # Enable visualization of all the labels
 opt.label = mj.mjtLabel.mjLABEL_BODY # Enable visualization of body labels
+opt.frame = mj.mjtFrame.mjFRAME_GEOM
 
 # install GLFW mouse and keyboard callbacks
 glfw.set_key_callback(window, keyboard)
@@ -350,7 +397,7 @@ skip_flag = False
 record_flag = False
 skip_nums = []
 skip_idx = None
-frame_rate = 120
+frame_rate = 60
 while not glfw.window_should_close(window):
     start_time = time.time()
     time_prev = data.time  #the total time simulation spent, minimal slot is model.opt.timestep
