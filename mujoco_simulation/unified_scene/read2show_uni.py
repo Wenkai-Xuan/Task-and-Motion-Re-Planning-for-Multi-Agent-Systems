@@ -33,17 +33,28 @@ lastx = 0
 lasty = 0
 
 def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot):
+    R_gap = np.array([
+        [1, 0, 0],
+        [0, 0.98238, 0.18689],
+        [0, -0.18689, 0.98238]
+    ]) #geom28
+    # R_gap = np.array([
+    #     [1, 0, 0],
+    #     [0, 0.99182, 0.12765],
+    #     [0, -0.12765, 0.99182]
+    # ]) #geom23
     Rx = np.array([
         [1, 0, 0],
-        [0, -1, 0],
-        [0, 0, -1]
+        [0, 0, -1],
+        [0, 1, 0]
     ])
     Ry = np.array([
         [0, 0, 1],
         [0, 1, 0],
         [-1, 0, 0]
     ])
-    R_comb = np.matmul(Rx, Ry)
+    R_xy = np.matmul(Rx, Ry)
+    R_comb = np.matmul(R_gap, R_xy)
     frame_pos = np.array(frame_pos)
     frame_rot = np.array(frame_rot)
     abs_pos = np.array(abs_pos)
@@ -52,7 +63,7 @@ def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot):
 
     e_pos = abs_pos - frame_pos
     frame_rot_inv = np.linalg.inv(frame_rot)
-    pos = np.dot(frame_rot_inv, e_pos) - np.array([0.135, 0, 0]) #the offset between the most end body frame and end-effector
+    pos = np.dot(frame_rot_inv, e_pos) - np.array([0.111, 0, 0]) #the offset between the most end geom frame and end-effector (geom23=0.135,geom28=0.111)
     rela_pos = np.matmul(np.linalg.inv(R_comb), pos)
 
     frame_mat = np.matmul(frame_rot, R_comb)
@@ -425,7 +436,7 @@ scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 # opt.label = 1  # Enable visualization of all the labels
 opt.label = mj.mjtLabel.mjLABEL_BODY # Enable visualization of body labels
-opt.frame = mj.mjtFrame.mjFRAME_GEOM
+# opt.frame = mj.mjtFrame.mjFRAME_GEOM # Enable visualization of geom frames
 
 # install GLFW mouse and keyboard callbacks
 glfw.set_key_callback(window, keyboard)
@@ -524,21 +535,17 @@ while not glfw.window_should_close(window):
             # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
             if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
                 data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
+            data.xfrc_applied[1+7*robot_num+l] = [0, 0, 0, 0, 0, 0] # enable the gravity for the dropped objects
             
             continue
         else:
             data.qpos[6*robot_num+7*l:6*robot_num+7*l+7] = obj_pos[l][current_step][0:3] + obj_quat[l][current_step][0:4]
-            data.xfrc_applied[1+1+7*robot_num+l] = [0, 0, 9.8, 0, 0, 0] # compensate the gravity so the objects won't fall by gravity
+            data.xfrc_applied[1+7*robot_num+l] = [0, 0, 9.8, 0, 0, 0] # compensate the gravity for all so the objects won't fall by gravity
+            # print(data.xfrc_applied)
 
     if frames:
         current_step += 1
 
-    # # print(len(old_plan[-1]), len(old_plan[-2]))
-    # # print(len(data.qpos))
-    # if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
-    #     old_plan.append(data.qpos.tolist())
-    if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
-        old_plan.append(data.qpos.tolist())
 
     # Update simulation state based on current step
     # print(data.qpos[26])
@@ -547,6 +554,12 @@ while not glfw.window_should_close(window):
     if not physics_flag:
         mj.mj_step(model, data)
     
+    # # print(len(old_plan[-1]), len(old_plan[-2]))
+    # # print(len(data.qpos))
+    # if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
+    #     old_plan.append(data.qpos.tolist())
+    if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
+        old_plan.append(data.qpos.tolist())
     
     # calculate the dropped object (pos, quat) w.r.t grasping robot
     # print(data.xpos[7]) # == print(data.xanchor[5])
@@ -561,13 +574,14 @@ while not glfw.window_should_close(window):
             for j in range(len(real_attch)):
                 # eef_pos = data.xpos[1+6 + 7*rela_robot]  #the most end body frame
                 # eef_xmat = data.xmat[1+6 + 7*rela_robot] #index 0 is the worldbody
-                eef_pos = data.geom_xpos[23 + 29*real_rela[j]]
-                eef_xmat = data.geom_xmat[23 + 29*real_rela[j]]
+                eef_pos = data.geom_xpos[28 + 29*real_rela[j]]
+                eef_xmat = data.geom_xmat[28 + 29*real_rela[j]]
                 eef_mat = [eef_xmat[i:i+3] for i in range(0, len(eef_xmat), 3)]
                 rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*real_attch[j]:6*robot_num+7*real_attch[j]+3].tolist(), [0, 0, 0.05])], 
                         quat2r(data.qpos[6*robot_num+7*real_attch[j]+3 : 6*robot_num+7*real_attch[j]+7]).as_matrix())
                 # rela_quat_xyzw = r2quat(rela_mat)
                 # rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
+                # print(eef_pos)
         else:
             print("please check the number of the attached objects is equal to the number of reference robots or not.")
 

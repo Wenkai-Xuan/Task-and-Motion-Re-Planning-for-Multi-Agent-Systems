@@ -325,7 +325,7 @@ try:
             replan[i] += traj2['robots'][j]['steps'][i]['joint_state']
         
         for k in range(obj_num):
-            no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], [0, 0.05, 0.55])]
+            no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], [0, 0.05, 0.55+0.05])]
             if scene_flag=='husky':
                 no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], [0, 0, 0.05])]
             replan[i] += (no_gap + traj2['objs'][k]['steps'][i]['quat'])
@@ -362,7 +362,7 @@ scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 # opt.label = 1  # Enable visualization of all the labels
 opt.label = mj.mjtLabel.mjLABEL_BODY # Enable visualization of body labels
-opt.frame = mj.mjtFrame.mjFRAME_GEOM
+# opt.frame = mj.mjtFrame.mjFRAME_GEOM # Enable visualization of geom frames
 
 # install GLFW mouse and keyboard callbacks
 glfw.set_key_callback(window, keyboard)
