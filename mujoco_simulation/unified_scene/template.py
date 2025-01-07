@@ -20,7 +20,7 @@ file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-df = pd.read_parquet('samples_000000000_to_000001376.parquet')
+df = pd.read_parquet('samples_000080000_to_000080868.parquet')
 
 
 # For callback functions
@@ -303,40 +303,7 @@ if (scene_flag != "husky"):
             tree2.write(rob_file)
             j += 1
 
-# skip_nums = json.loads(os.environ["skips"])
 
-# read the traj data of robots and objects
-with open(f'old_plan_{scene_flag}_{sample_indx}_rela.json', 'r') as file:
-    traj = json.load(file)
-
-length = len(traj)  #length of the trajectory
-
-# load the replan traj if it exists
-try:
-    with open(f'trajectory_{scene_flag}_{sample_indx}_rela.json', 'r') as file:
-        traj2 = json.load(file)
-
-    traj2_num = len(traj2['robots'][0]['steps']) #len of replan traj
-    rob_num = len(traj2['robots'])
-    obj_num = len(traj2['objs'])
-    replan = [[] for n in range(traj2_num)]
-
-    for i in range(traj2_num):
-        for j in range(rob_num):
-            replan[i] += traj2['robots'][j]['steps'][i]['joint_state']
-        
-        for k in range(obj_num):
-            no_gap = [a - b for a, b in zip(traj2['objs'][k]['steps'][i]['pos'], table_gap)] # only the dropped object should minus an extra 0.05
-            # if k in skip_nums:
-            #     no_gap[2] -= 0.05
-            replan[i] += (no_gap + traj2['objs'][k]['steps'][i]['quat'])
-
-    traj += replan
-
-    with open(f'full_plan_{scene_flag}_{sample_indx}_rela.json', 'w') as file:
-        json.dump(traj, file, indent=4)
-except:
-    traj2_num = 0
 
 #get the full path
 dirname = os.path.dirname(__file__)
@@ -363,7 +330,8 @@ scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 # opt.label = 1  # Enable visualization of all the labels
 opt.label = mj.mjtLabel.mjLABEL_BODY # Enable visualization of body labels
-# opt.frame = mj.mjtFrame.mjFRAME_GEOM # Enable visualization of geom frames
+opt.frame = mj.mjtFrame.mjFRAME_GEOM # Enable visualization of geom frames
+# opt.frame = mj.mjtFrame.mjFRAME_WORLD
 
 # install GLFW mouse and keyboard callbacks
 glfw.set_key_callback(window, keyboard)
@@ -390,12 +358,13 @@ init_controller(model,data)
 mj.set_mjcb_control(controller)
 
 current_step = 0
-max_steps = length + traj2_num
+max_steps = 1000
 step_size = 1.0 / max_steps
 frames = False
 physics_flag = False
 skip_flag = False
 record_flag = False
+skip_nums = []
 skip_idx = None
 frame_rate = 60
 while not glfw.window_should_close(window):
@@ -410,7 +379,7 @@ while not glfw.window_should_close(window):
     
 
     # set the qpos values of current step
-    data.qpos[:] = traj[current_step]
+    data.qpos[:] = [0 for i in range(data.qpos.size)]
 
     if frames:
         current_step += 1
@@ -421,6 +390,14 @@ while not glfw.window_should_close(window):
     # print(data_tem.qpos[26])
     if not physics_flag:
         mj.mj_step(model, data)
+    
+    eef_pos_23 = data.geom_xpos[23]
+    eef_pos_28 = data.geom_xpos[28]
+    eef_xmat_23 = data.geom_xmat[23]
+    eef_xmat_28 = data.geom_xmat[28]
+    # print(f"eef_pos_23: {eef_pos_23}", f"eef_pos_28: {eef_pos_28}")
+    # print(f"eef_xmat_23: {eef_xmat_23}", f"eef_xmat_28: {eef_xmat_28}")
+
     viewport_width, viewport_height = glfw.get_framebuffer_size(
             window)
     viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)

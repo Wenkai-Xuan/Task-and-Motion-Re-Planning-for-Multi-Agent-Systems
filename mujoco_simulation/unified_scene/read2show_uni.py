@@ -16,7 +16,7 @@ simend = 2 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
-sample_indx = 25  #decide which sample to read and show
+sample_indx = 222  #decide which sample to read and show
 file_save = 0  #set to 1 to generate data files
 
 
@@ -32,7 +32,7 @@ button_right = False
 lastx = 0
 lasty = 0
 
-def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot):
+def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot, offset):
     R_gap = np.array([
         [1, 0, 0],
         [0, 0.98238, 0.18689],
@@ -63,7 +63,7 @@ def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot):
 
     e_pos = abs_pos - frame_pos
     frame_rot_inv = np.linalg.inv(frame_rot)
-    pos = np.dot(frame_rot_inv, e_pos) - np.array([0.111, 0, 0]) #the offset between the most end geom frame and end-effector (geom23=0.135,geom28=0.111)
+    pos = np.dot(frame_rot_inv, e_pos) - np.array([offset, 0, 0]) #the offset between the most end geom frame and end-effector (geom23=0.135,geom28=0.111)
     rela_pos = np.matmul(np.linalg.inv(R_comb), pos)
 
     frame_mat = np.matmul(frame_rot, R_comb)
@@ -572,13 +572,18 @@ while not glfw.window_should_close(window):
         rela_quat = [[] for k in range(len(real_attch))]
         if len(real_attch) == len(real_rela):
             for j in range(len(real_attch)):
+                if ini_rob[real_attch[j]]['type'] == "ur5_vacuum": #the value in the list is the index of the robot
+                    offset = 0.135 - 0.031
+                elif ini_rob[real_attch[j]]['type'] == "ur5_gripper":
+                    offset = 0.2 - 0.031
+
                 # eef_pos = data.xpos[1+6 + 7*rela_robot]  #the most end body frame
                 # eef_xmat = data.xmat[1+6 + 7*rela_robot] #index 0 is the worldbody
                 eef_pos = data.geom_xpos[28 + 29*real_rela[j]]
                 eef_xmat = data.geom_xmat[28 + 29*real_rela[j]]
                 eef_mat = [eef_xmat[i:i+3] for i in range(0, len(eef_xmat), 3)]
-                rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*real_attch[j]:6*robot_num+7*real_attch[j]+3].tolist(), [0, 0, 0.05])], 
-                        quat2r(data.qpos[6*robot_num+7*real_attch[j]+3 : 6*robot_num+7*real_attch[j]+7]).as_matrix())
+                rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*real_attch[j]:6*robot_num+7*real_attch[j]+3].tolist(), [0, 0, 0])], 
+                        quat2r(data.qpos[6*robot_num+7*real_attch[j]+3 : 6*robot_num+7*real_attch[j]+7]).as_matrix(), offset)
                 # rela_quat_xyzw = r2quat(rela_mat)
                 # rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
                 # print(eef_pos)
@@ -610,80 +615,83 @@ while not glfw.window_should_close(window):
 
 glfw.terminate()
 
+# os.environ["skips"] = str(skip_nums)
+
 del old_plan[0:2] # correspond to definition of old_plan
 # # do we need to add the table gap?????
 # for i in range(len(old_plan)):
 #     for l in range(obj_num):
 #         old_plan[i][6*robot_num+7*l+3-1] += 0.05
-with open(f'old_plan_{scene_flag}_{sample_indx}_rela.json', 'w') as file:
-    json.dump(old_plan, file, indent=4)
+# with open(f'old_plan_{scene_flag}_{sample_indx}_rela.json', 'w') as file:
+#     json.dump(old_plan, file, indent=4)
 # print([a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])])
 
 # output the new positions of the objects only when they get a new position
-if (len(skip_nums) > 0):
-    x = 0
-    for l in range(obj_num):
-        print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
+# if (len(skip_nums) > 0):
+#     x = 0
+#     for l in range(obj_num):
+#         print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
 
-    # output the new objs config
-    obj_output = []
-    for l in range(obj_num):
-        abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
-        if l in skip_nums: # only when objs drop on the table shall we add the gap
-            abs_objpos = [a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])]  #add the gap between table,table_base
-        abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
-        goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
-        goal_quat = ini_obj[l]['goal_quat'].tolist()
+#     # output the new objs config
+#     obj_output = []
+#     for l in range(obj_num):
+#         abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
+#         if (scene_flag == "husky"):
+#             abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added below
 
-        if (scene_flag == "husky"):
-            abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added above
+#         if l in skip_nums: # only when objs drop on the table shall we add the gap
+#             abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.05])]  #add the gap between table,table_base
+#         abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
+#         goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
+#         goal_quat = ini_obj[l]['goal_quat'].tolist()
 
-        if (l in attch_idx):
-            abs_objpos = rela_pos[x].tolist()
-            abs_objquat = rela_quat[x].tolist()
-            # goal_pos/quat still w.r.t "table"
 
-            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
-                           'start_pos': abs_objpos, 
-                           'start_quat': abs_objquat,
-                           'goal_pos': goal_pos,
-                           'goal_quat': goal_quat,
-                           'parent': f'a{rela_robot[x]}_pen_tip'})
-            x += 1
-        else:
-            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
-                            'start_pos': abs_objpos, 
-                            'start_quat': abs_objquat,
-                            'goal_pos': goal_pos,
-                            'goal_quat': goal_quat})
-    obj_out = {'objects': obj_output}
-    with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/objects/{scene_flag}_obj_output_{sample_indx}_rela.json', 'w') as file:
-            json.dump(obj_out, file, indent=4)
-    # output the robots config
-    robot_output = []
-    if (scene_flag == "husky"):
-        for k in range(robot_num):
-                if (k == 0):
-                    robot_output.append({'parent': "left_arm_bulkhead_joint",
-                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                         'type': ini_rob[k]['type'],
-                                         'start_pose': start_pose[k]})
-                elif (k == 1):
-                    robot_output.append({'parent': "right_arm_bulkhead_joint",
-                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                         'type': ini_rob[k]['type'],
-                                         'start_pose': start_pose[k]})
-        robot_out = {'robots': robot_output}
-        with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json', 'w') as file:
-                json.dump(robot_out, file, indent=4)
-    else:
-        for k in range(robot_num):
-                robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                     'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                     'type': ini_rob[k]['type'],
-                                     'start_pose': start_pose[k]})
-        robot_out = {'robots': robot_output}
-        with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json', 'w') as file:
-                json.dump(robot_out, file, indent=4)
+#         if (l in attch_idx):
+#             abs_objpos = rela_pos[x].tolist()
+#             abs_objquat = rela_quat[x].tolist()
+#             # goal_pos/quat still w.r.t "table"
+
+#             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+#                            'start_pos': abs_objpos, 
+#                            'start_quat': abs_objquat,
+#                            'goal_pos': goal_pos,
+#                            'goal_quat': goal_quat,
+#                            'parent': f'a{rela_robot[x]}_pen_tip'})
+#             x += 1
+#         else:
+#             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+#                             'start_pos': abs_objpos, 
+#                             'start_quat': abs_objquat,
+#                             'goal_pos': goal_pos,
+#                             'goal_quat': goal_quat})
+#     obj_out = {'objects': obj_output}
+#     with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/objects/{scene_flag}_obj_output_{sample_indx}_rela.json', 'w') as file:
+#             json.dump(obj_out, file, indent=4)
+#     # output the robots config
+#     robot_output = []
+#     if (scene_flag == "husky"):
+#         for k in range(robot_num):
+#                 if (k == 0):
+#                     robot_output.append({'parent': "left_arm_bulkhead_joint",
+#                                          'base_pos': ini_rob[k]['base_pos'].tolist(), 
+#                                          'base_quat': ini_rob[k]['base_quat'].tolist(),
+#                                          'type': ini_rob[k]['type'],
+#                                          'start_pose': start_pose[k]})
+#                 elif (k == 1):
+#                     robot_output.append({'parent': "right_arm_bulkhead_joint",
+#                                          'base_pos': ini_rob[k]['base_pos'].tolist(), 
+#                                          'base_quat': ini_rob[k]['base_quat'].tolist(),
+#                                          'type': ini_rob[k]['type'],
+#                                          'start_pose': start_pose[k]})
+#         robot_out = {'robots': robot_output}
+#         with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json', 'w') as file:
+#                 json.dump(robot_out, file, indent=4)
+#     else:
+#         for k in range(robot_num):
+#                 robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
+#                                      'base_quat': ini_rob[k]['base_quat'].tolist(),
+#                                      'type': ini_rob[k]['type'],
+#                                      'start_pose': start_pose[k]})
+#         robot_out = {'robots': robot_output}
+#         with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json', 'w') as file:
+#                 json.dump(robot_out, file, indent=4)
