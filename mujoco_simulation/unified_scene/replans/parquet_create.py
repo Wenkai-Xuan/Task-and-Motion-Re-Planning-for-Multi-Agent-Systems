@@ -8,9 +8,11 @@ import json
 # Directory containing the JSON files
 input_directory = "sequence_plan_20241217_185149_conveyor_rela"
 output_parquet_file = "output_file.parquet"
-de = pd.read_parquet('../samples_000080000_to_000080868.parquet')
+de = pd.read_parquet('../samples_000080000_to_000080868.parquet') # read any parquet to replace with the new data
 df = de[0:100].copy()
 
+old_df = pd.read_parquet('../samples_000010000_to_000012113.parquet') # read the old conveyor data
+sample_indx = 5
 
 
 with open('conveyor_obj_output_5_rela_n.json', 'r') as file:
@@ -24,6 +26,9 @@ i=0
 
 for subfolder_name in sorted(os.listdir(input_directory)):
     subfolder_path = os.path.join(input_directory, subfolder_name)
+
+    df['obj_file'][i] = obj_file
+    df['robot_file'][i] = robot_file
 
     if os.path.isdir(subfolder_path):
         for file in os.listdir(subfolder_path):
@@ -52,6 +57,9 @@ for subfolder_name in sorted(os.listdir(input_directory)):
                         df['trajectory'][i] = trajectory
     
     i+=1
+
+# for entry in list(['obj_file', 'robot_file', 'metadata', 'plan', 'scene', 'sequence', 'trajectory']):
+#     df[entry][100] = old_df[entry][sample_indx]
 
 df.to_parquet('conveyor_5_rela.parquet')
 
