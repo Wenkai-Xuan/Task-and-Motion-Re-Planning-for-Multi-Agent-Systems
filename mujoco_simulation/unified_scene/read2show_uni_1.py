@@ -322,7 +322,7 @@ length = len(joint_traj[0])  #length of the trajectory
 
 #get the full path
 dirname = os.path.dirname(__file__)
-abspath = os.path.join(dirname + "/" + xml_path)
+abspath = os.path.join(dirname, xml_path)
 xml_path = abspath
 
 # MuJoCo data structures

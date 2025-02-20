@@ -21,7 +21,7 @@ file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-df = pd.read_parquet('samples_000010000_to_000012113.parquet')
+df = pd.read_parquet('../samples_000010000_to_000012113.parquet')
 
 
 
@@ -31,6 +31,11 @@ button_middle = False
 button_right = False
 lastx = 0
 lasty = 0
+
+def rob_hold_obj(rob_frame_zpos, obj_zpos, threshold):
+    #check whether the robot holds the object by the z-distance between the most-end geom-frame of robot and the object
+    if np.linalg.norm(np.array(rob_frame_zpos) - np.array(obj_zpos)) < threshold:
+        return True
 
 def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot, offset):
     R_gap = np.array([
@@ -289,6 +294,71 @@ else:
     rob_file = f'ur5e_{robot_num}.xml'
     table_gap = [0, 0.05, 0.55]
 
+
+# read the traj data of robots and objects
+# read the traj of several objects
+obj_pos = [[] for k in range(obj_num)]
+obj_quat = [[] for k in range(obj_num)]
+for obj_idx in range(obj_num):
+    obj_step = df['trajectory'][sample_indx]['objs'][obj_idx]['steps']
+    obj_name = df['trajectory'][sample_indx]['objs'][obj_idx]['name']
+
+    for i in range(obj_step.size):
+        obj_pos[int(obj_name[3])-1].append([a - b for a, b in zip(obj_step[i]['pos'].tolist(), table_gap)])  #the first obj is obj1 instead of 0
+        obj_quat[int(obj_name[3])-1].append(obj_step[i]['quat'].tolist())
+
+    if file_save:
+        obj_traj = []
+        for i in range(obj_step.size):
+            obj_traj.append({'pos': obj_step[i]['pos'].tolist(), 'quat': obj_step[i]['quat'].tolist()}) # convert np.ndarray object to list
+        with open(f'{obj_name}_traj_{sample_indx}.json', 'w') as file:
+            json.dump(obj_traj, file, indent=4)
+
+# read the traj of several robots
+joint_traj = [[] for k in range(robot_num)]
+ee_pos = [[] for k in range(robot_num)]
+ee_quat = [[] for k in range(robot_num)]
+for robot_idx in range(robot_num):
+    joint_state = df['trajectory'][sample_indx]['robots'][robot_idx]['steps']
+    rob_name = df['trajectory'][sample_indx]['robots'][robot_idx]['name']
+
+    for j in range(joint_state.size):
+        joint_traj[int(rob_name[1])].append(joint_state[j]['joint_state'].tolist())  #the first traj might not be the traj of the first robot
+
+    if file_save:
+        robot_traj = []
+        for j in range(joint_state.size):
+            robot_traj.append({'joint_state': joint_state[j]['joint_state'].tolist()}) # convert np.ndarray object to list
+
+        with open(f'{rob_name}traj_{sample_indx}.json', 'w') as file:
+            json.dump(robot_traj, file, indent=4)
+
+    # read the end-effector traj
+    ee0_step = df['trajectory'][sample_indx]['robots'][robot_idx]['steps']
+    
+    for i in range(ee0_step.size):
+        ee_pos[int(rob_name[1])].append(ee0_step[i]['ee_pos'].tolist())
+        ee_quat[int(rob_name[1])].append(ee0_step[i]['ee_quat'].tolist())
+
+    if file_save:
+        ee0_traj = []
+        for i in range(ee0_step.size):
+            ee0_traj.append({'pos': ee0_step[i]['ee_pos'].tolist(), 'quat': ee0_step[i]['ee_quat'].tolist()}) # convert np.ndarray object to list
+
+        with open(f'{rob_name}eetraj_{sample_indx}.json', 'w') as file:
+            json.dump(ee0_traj, file, indent=4)
+
+length = len(joint_traj[0])  #length of the trajectory
+
+
+#get the full path
+dirname = os.path.dirname(__file__)
+parent_dirname = os.path.dirname(dirname) #the parent directory of the current directory.
+abspath = os.path.join(parent_dirname, xml_path)
+xml_path = abspath
+rob_file = os.path.join(parent_dirname, rob_file)
+objs_file = os.path.join(parent_dirname, objs_file)
+
 # set the object file in scene file according to the number of objects
 tree = ET.parse(xml_path)
 root = tree.getroot()
@@ -347,72 +417,12 @@ if (scene_flag != "husky"):
             tree2.write(rob_file)
             j += 1
 
-
-# read the traj data of robots and objects
-# read the traj of several objects
-obj_pos = [[] for k in range(obj_num)]
-obj_quat = [[] for k in range(obj_num)]
-for obj_idx in range(obj_num):
-    obj_step = df['trajectory'][sample_indx]['objs'][obj_idx]['steps']
-    obj_name = df['trajectory'][sample_indx]['objs'][obj_idx]['name']
-
-    for i in range(obj_step.size):
-        obj_pos[int(obj_name[3])-1].append([a - b for a, b in zip(obj_step[i]['pos'].tolist(), table_gap)])  #the first obj is obj1 instead of 0
-        obj_quat[int(obj_name[3])-1].append(obj_step[i]['quat'].tolist())
-
-    if file_save:
-        obj_traj = []
-        for i in range(obj_step.size):
-            obj_traj.append({'pos': obj_step[i]['pos'].tolist(), 'quat': obj_step[i]['quat'].tolist()}) # convert np.ndarray object to list
-        with open(f'{obj_name}_traj_{sample_indx}.json', 'w') as file:
-            json.dump(obj_traj, file, indent=4)
-
-# read the traj of several robots
-joint_traj = [[] for k in range(robot_num)]
-ee_pos = [[] for k in range(robot_num)]
-ee_quat = [[] for k in range(robot_num)]
-for robot_idx in range(robot_num):
-    joint_state = df['trajectory'][sample_indx]['robots'][robot_idx]['steps']
-    rob_name = df['trajectory'][sample_indx]['robots'][robot_idx]['name']
-
-    for j in range(joint_state.size):
-        joint_traj[int(rob_name[1])].append(joint_state[j]['joint_state'].tolist())  #the first traj might not be the traj of the first robot
-
-    if file_save:
-        robot_traj = []
-        for j in range(joint_state.size):
-            robot_traj.append({'joint_state': joint_state[j]['joint_state'].tolist()}) # convert np.ndarray object to list
-
-        with open(f'{rob_name}traj_{sample_indx}.json', 'w') as file:
-            json.dump(robot_traj, file, indent=4)
-
-    # read the end-effector traj
-    ee0_step = df['trajectory'][sample_indx]['robots'][robot_idx]['steps']
-    
-    for i in range(ee0_step.size):
-        ee_pos[int(rob_name[1])].append(ee0_step[i]['ee_pos'].tolist())
-        ee_quat[int(rob_name[1])].append(ee0_step[i]['ee_quat'].tolist())
-
-    if file_save:
-        ee0_traj = []
-        for i in range(ee0_step.size):
-            ee0_traj.append({'pos': ee0_step[i]['ee_pos'].tolist(), 'quat': ee0_step[i]['ee_quat'].tolist()}) # convert np.ndarray object to list
-
-        with open(f'{rob_name}eetraj_{sample_indx}.json', 'w') as file:
-            json.dump(ee0_traj, file, indent=4)
-
-length = len(joint_traj[0])  #length of the trajectory
-
 # read the initial joint angles of robots
 start_pose = []
 for key in ini_scene['Robots']:  # key is the name of the robot
     if ini_scene['Robots'][key] is not None:
         start_pose.append(ini_scene['Robots'][key]['initial_pose'].tolist())
 
-#get the full path
-dirname = os.path.dirname(__file__)
-abspath = os.path.join(dirname, xml_path)
-xml_path = abspath
 
 # MuJoCo data structures
 model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
@@ -472,9 +482,12 @@ skip_flag = False
 record_flag = False
 skip_nums = []
 skip_idx = None
-attch_idx = None
-rela_robot = None
+rob_hold=[]
+obj_hold = []
+obj_rob_pair = []
+attch_obj = []
 frame_rate = 60
+single_or_n = "C" #whether to drop single object or not, especially multiple objects are held by multiple robots
 while not glfw.window_should_close(window):
     start_time = time.time()
     time_prev = data.time  #the total time simulation spent, minimal slot is model.opt.timestep
@@ -484,43 +497,50 @@ while not glfw.window_should_close(window):
     if current_step >= max_steps:
         break
 
+    # check whether any object is held by any robots and which robots hold
+    for l in range(obj_num):
+        for k in range(robot_num):
+            # print(np.linalg.norm(np.array(ee_pos[k][current_step][0:3]) - np.array(obj_pos[l][current_step][0:3])))
+            if rob_hold_obj(ee_pos[k][current_step][0:3], obj_pos[l][current_step][0:3], 0.7):
+                print(f"Robot{k} holds the object{l+1}")
+                rob_hold += [k]
+                obj_hold += [l]
+                obj_rob_pair += [(l, k)] #in case mutiple robs hold one obj, then len(rob_hole) != len(obj_hold)
+                physics_flag = True
+                record_flag = False
+
+    if len(obj_hold) >= 1:
+        drop_obj = random.choice(obj_hold) #the obj to be dropped
+        attch_obj = [x for x in obj_hold if x != drop_obj] #the obj to be attached
+        attch_rob = [pair[1] for pair in obj_rob_pair if pair[0] != drop_obj] #the rob to be attached
+    
+
     #check add physical simulation or not
     if physics_flag:
-        Y_or_n = input("Please decide whether to add physical simulation to objects specifically or not[Y/n]: ")
-        if (Y_or_n == "Y"):
-            skip_idx = int(input("Please enter the index of the object you want to add physical simulation to: ")) - 1  #the index of obj is one less than its name number
-            in_text = input("Please enter the indices of the objects to be attached to robots: ")
-            temp = list(map(int, re.split(",| ", in_text)))
-            attch_idx = [num - 1 for num in temp]
-            rob_text = input("Please enter the indices of the reference robots respectively: ") # the robot used as the relative local frame
-            rela_robot = list(map(int, re.split(",| ", rob_text)))
-            if (skip_idx in range(obj_num)):
-                skip_nums += [skip_idx]
-                skip_flag = True
-                # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
-                data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = full_vel(obj_pos[skip_idx][current_step-1][0:3],obj_pos[skip_idx][current_step][0:3]
-                                                                              ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
-                                                                              ,1/frame_rate)
-                print(f"velocity:{data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6]}")
-                for k in range(robot_num):
-                    start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
-                print(current_step)
+        if (single_or_n == "Y"):
+            skip_idx = drop_obj
+            attch_rob = attch_rob
+            skip_nums += [skip_idx]
+            skip_flag = True
+            # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
+            data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = full_vel(obj_pos[skip_idx][current_step-1][0:3],obj_pos[skip_idx][current_step][0:3]
+                                                                            ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
+                                                                            ,1/frame_rate)
+            print(f"velocity:{data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6]}")
+            for k in range(robot_num):
+                start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
+            print(current_step)
         else:
-            skip_count = int(input("Please decide how many objects you want to add physical simulation to: "))
-            if (skip_count > obj_num):
-                # skip_count = int(input(f"The current number of objects is {obj_num}, please enter a number less or equal to it."))
-                print(f"The current number of objects is {obj_num}, please enter a number less or equal to it.")
-            else:
-                skip_nums += add_physics(obj_num, skip_count)
-                skip_flag = True
-                # data.qvel[:] = 0 #set the initial velocity to zero
-                for l in skip_nums:
-                    data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
-                                                                              ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
-                                                                              ,1/frame_rate)
-                for k in range(robot_num):
-                    start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
-                print(current_step)
+            skip_nums = obj_hold #drop all the held objs
+            skip_flag = True
+            # data.qvel[:] = 0 #set the initial velocity to zero
+            for l in skip_nums:
+                data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
+                                                                            ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
+                                                                            ,1/frame_rate)
+            for k in range(robot_num):
+                start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
+            print(current_step)
     
     if skip_flag:
         physics_flag = False
@@ -565,25 +585,23 @@ while not glfw.window_should_close(window):
     # print(data.xpos[7]) # == print(data.xanchor[5])
     # print(mj.mj_id2name(model,1,7+21))
     
-    if (attch_idx != None and rela_robot != None):
-        real_attch = [x for x in attch_idx if x in range(obj_num)] # the correct indices of objects in case 'attch_idx' has invalid numbers
-        real_rela = [y for y in rela_robot if y in range(robot_num)]
-        rela_pos = [[] for k in range(len(real_attch))]
-        rela_quat = [[] for k in range(len(real_attch))]
-        if len(real_attch) == len(real_rela):
-            for j in range(len(real_attch)):
-                if ini_rob[real_attch[j]]['type'] == "ur5_vacuum": #the value in the list is the index of the robot
+    if (len(attch_obj) != 0 and len(attch_rob) != 0):
+        rela_pos = [[] for k in range(len(attch_obj))]
+        rela_quat = [[] for k in range(len(attch_obj))]
+        if len(attch_obj) == len(attch_rob):
+            for j in range(len(attch_obj)):
+                if ini_rob[attch_obj[j]]['type'] == "ur5_vacuum": #the value in the list is the index of the robot
                     offset = 0.135 - 0.031
-                elif ini_rob[real_attch[j]]['type'] == "ur5_gripper":
+                elif ini_rob[attch_obj[j]]['type'] == "ur5_gripper":
                     offset = 0.2 - 0.031
 
-                # eef_pos = data.xpos[1+6 + 7*rela_robot]  #the most end body frame
-                # eef_xmat = data.xmat[1+6 + 7*rela_robot] #index 0 is the worldbody
-                eef_pos = data.geom_xpos[28 + 29*real_rela[j]]
-                eef_xmat = data.geom_xmat[28 + 29*real_rela[j]]
+                # eef_pos = data.xpos[1+6 + 7*attch_rob]  #the most end body frame
+                # eef_xmat = data.xmat[1+6 + 7*attch_rob] #index 0 is the worldbody
+                eef_pos = data.geom_xpos[28 + 29*attch_rob[j]]
+                eef_xmat = data.geom_xmat[28 + 29*attch_rob[j]]
                 eef_mat = [eef_xmat[i:i+3] for i in range(0, len(eef_xmat), 3)]
-                rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*real_attch[j]:6*robot_num+7*real_attch[j]+3].tolist(), [0, 0, 0])], 
-                        quat2r(data.qpos[6*robot_num+7*real_attch[j]+3 : 6*robot_num+7*real_attch[j]+7]).as_matrix(), offset)
+                rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*attch_obj[j]:6*robot_num+7*attch_obj[j]+3].tolist(), [0, 0, 0])], 
+                        quat2r(data.qpos[6*robot_num+7*attch_obj[j]+3 : 6*robot_num+7*attch_obj[j]+7]).as_matrix(), offset)
                 # rela_quat_xyzw = r2quat(rela_mat)
                 # rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
                 # print(eef_pos)
@@ -656,7 +674,7 @@ del old_plan[0:2] # correspond to definition of old_plan
 #                            'start_quat': abs_objquat,
 #                            'goal_pos': goal_pos,
 #                            'goal_quat': goal_quat,
-#                            'parent': f'a{rela_robot[x]}_pen_tip'})
+#                            'parent': f'a{attch_rob[x]}_pen_tip'})
 #             x += 1
 #         else:
 #             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),

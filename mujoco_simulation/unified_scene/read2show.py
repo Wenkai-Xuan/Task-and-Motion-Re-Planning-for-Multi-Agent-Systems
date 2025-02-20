@@ -15,7 +15,7 @@ simend = 2 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
-sample_indx = 25  #decide which sample to read and show
+sample_indx = 222  #decide which sample to read and show
 file_save = 0  #set to 1 to generate data files
 
 
@@ -340,7 +340,7 @@ except:
 
 #get the full path
 dirname = os.path.dirname(__file__)
-abspath = os.path.join(dirname + "/" + xml_path)
+abspath = os.path.join(dirname, xml_path)
 xml_path = abspath
 
 # MuJoCo data structures

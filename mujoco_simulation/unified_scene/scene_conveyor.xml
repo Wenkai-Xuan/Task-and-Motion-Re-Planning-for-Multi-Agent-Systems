@@ -1,7 +1,7 @@
 <mujoco model="ur5e scene">
   
-  <include file="ur5e_conveyor.xml" />
-  <include file="objs_2.xml" />
+  <include file="/home/tapasdeveloper/Desktop/msc_thesis/wenkai/mujoco_simulation/unified_scene/ur5e_conveyor.xml" />
+  <include file="/home/tapasdeveloper/Desktop/msc_thesis/wenkai/mujoco_simulation/unified_scene/objs_2.xml" />
 
   <statistic center="0.3 0 0.4" extent="0.8" />
 
@@ -20,5 +20,20 @@
   <worldbody>
     <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" />
+    
+    <body name="invisible_floor" pos="0 0 0.025">
+      <geom type="box" size="10 10 0.01" rgba="0 0 0 0" contype="1" conaffinity="1" />
+    </body>
   </worldbody>
+  
+  <contact>
+    <exclude body1="base" body2="invisible_floor" />
+    <exclude body1="base_1" body2="invisible_floor" />
+    <exclude body1="base_2" body2="invisible_floor" />
+    <exclude body1="base_3" body2="invisible_floor" />
+    <exclude body1="shoulder_link" body2="invisible_floor" />
+    <exclude body1="shoulder_link_1" body2="invisible_floor" />
+    <exclude body1="shoulder_link_2" body2="invisible_floor" />
+    <exclude body1="shoulder_link_3" body2="invisible_floor" />
+  </contact>
 </mujoco>
