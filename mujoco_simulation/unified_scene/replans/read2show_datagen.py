@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 import random
 import time
 import re
+from datetime import datetime
 
 
 # xml_path = 'scene.xml' #xml file (assumes this is in the same folder as this file)
@@ -36,6 +37,7 @@ def rob_hold_obj(rob_frame_zpos, obj_zpos, threshold):
     #check whether the robot holds the object by the z-distance between the most-end geom-frame of robot and the object
     if np.linalg.norm(np.array(rob_frame_zpos) - np.array(obj_zpos)) < threshold:
         return True
+    return False
 
 def rela_corrd(frame_pos, frame_rot, abs_pos, abs_rot, offset):
     R_gap = np.array([
@@ -483,153 +485,191 @@ record_flag = False
 skip_nums = []
 skip_idx = None
 rob_hold=[]
-obj_hold = []
+obj_held = []
 obj_rob_pair = []
 attch_obj = []
+hold_step = None
+hold_dict = []
+first_check = True
 frame_rate = 60
-single_or_n = "C" #whether to drop single object or not, especially multiple objects are held by multiple robots
-while not glfw.window_should_close(window):
-    start_time = time.time()
-    time_prev = data.time  #the total time simulation spent, minimal slot is model.opt.timestep
-    # while (data.time - time_prev < step_size):
-    #     mj.mj_step(model, data)
-    
-    if current_step >= max_steps:
-        break
+single_or_n = "Y" #whether to drop single object or not, especially multiple objects are held by multiple robots
 
+#create the output folder to store the new initial configs for replanning
+output_folder = f'replan_{scene_flag}_{sample_indx}_' + datetime.now().strftime("%Y%m%d_%H%M%S")
+os.makedirs(output_folder, exist_ok=True)
+
+#go through all the steps to check when robot holds object and store the info
+for step in range(max_steps):
+    if (step == 0):
+        continue
     # check whether any object is held by any robots and which robots hold
     for l in range(obj_num):
         for k in range(robot_num):
             # print(np.linalg.norm(np.array(ee_pos[k][current_step][0:3]) - np.array(obj_pos[l][current_step][0:3])))
-            if rob_hold_obj(ee_pos[k][current_step][0:3], obj_pos[l][current_step][0:3], 0.7):
-                print(f"Robot{k} holds the object{l+1}")
+            if rob_hold_obj(ee_pos[k][step][0:3], obj_pos[l][step][0:3], 0.7):
+                # print(f"Robot{k} holds the object{l+1}")
                 rob_hold += [k]
-                obj_hold += [l]
-                obj_rob_pair += [(l, k)] #in case mutiple robs hold one obj, then len(rob_hole) != len(obj_hold)
-                physics_flag = True
-                record_flag = False
-
-    if len(obj_hold) >= 1:
-        drop_obj = random.choice(obj_hold) #the obj to be dropped
-        attch_obj = [x for x in obj_hold if x != drop_obj] #the obj to be attached
-        attch_rob = [pair[1] for pair in obj_rob_pair if pair[0] != drop_obj] #the rob to be attached
+                obj_held += [l]
+                obj_rob_pair += [(l, k)] #in case mutiple robs hold one obj, then len(rob_hole) != len(obj_held)
+                hold_step = step
     
-
-    #check add physical simulation or not
-    if physics_flag:
-        if (single_or_n == "Y"):
-            skip_idx = drop_obj
-            attch_rob = attch_rob
-            skip_nums += [skip_idx]
-            skip_flag = True
-            # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
-            data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = full_vel(obj_pos[skip_idx][current_step-1][0:3],obj_pos[skip_idx][current_step][0:3]
-                                                                            ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
-                                                                            ,1/frame_rate)
-            print(f"velocity:{data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6]}")
-            for k in range(robot_num):
-                start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
-            print(current_step)
-        else:
-            skip_nums = obj_hold #drop all the held objs
-            skip_flag = True
-            # data.qvel[:] = 0 #set the initial velocity to zero
-            for l in skip_nums:
-                data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
-                                                                            ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
-                                                                            ,1/frame_rate)
-            for k in range(robot_num):
-                start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
-            print(current_step)
+    if hold_step != None:
+        hold_dict.append({"hold_step": hold_step, "obj_rob_pair": obj_rob_pair, "rob_hold": rob_hold, "obj_held": obj_held})
     
-    if skip_flag:
-        physics_flag = False
-        record_flag = True
+    rob_hold=[]
+    obj_held = []
+    obj_rob_pair = [] #reset the obj_rob_pair to empty after we record unless they will contain all (obj, rob) pairs
+    hold_step = None #reset the hold_step to None after we record this step
 
-    # set the qpos values of current step
-    for k in range(robot_num):
-        data.qpos[6*k:6*k+6] = joint_traj[k][current_step][0:6]
+hold_dict_path = os.path.join(output_folder, f'hold_info_{scene_flag}_{sample_indx}.json')
 
-    for l in range(obj_num):
-        if l in skip_nums:
-            # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
-                data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
-            data.xfrc_applied[1+7*robot_num+l] = [0, 0, 0, 0, 0, 0] # enable the gravity for the dropped objects
-            
-            continue
-        else:
-            data.qpos[6*robot_num+7*l:6*robot_num+7*l+7] = obj_pos[l][current_step][0:3] + obj_quat[l][current_step][0:4]
-            data.xfrc_applied[1+7*robot_num+l] = [0, 0, 9.8, 0, 0, 0] # compensate the gravity for all so the objects won't fall by gravity
-            # print(data.xfrc_applied)
+with open(hold_dict_path, 'w') as file:
+    json.dump(hold_dict, file, indent=4)
+i=100
+if i == 100:
+    sample_step = hold_dict[i]['hold_step']
 
-    if frames:
-        current_step += 1
+    step_folder = os.path.join(output_folder, f"{sample_step}")
+    os.makedirs(step_folder, exist_ok=True)
 
-
-    # Update simulation state based on current step
-    # print(data.qpos[26])
-    # data_tem = mj.MjData(model)
-    # print(data_tem.qpos[26])
-    if not physics_flag:
-        mj.mj_step(model, data)
+    if len(hold_dict[i]['obj_held']) >= 1:
+        drop_obj = random.choice(hold_dict[i]['obj_held']) #the obj to be dropped
+        attch_obj = [x for x in hold_dict[i]['obj_held'] if x != drop_obj] #the obj to be attached
+        attch_rob = [pair[1] for pair in hold_dict[i]['obj_rob_pair'] if pair[0] != drop_obj] #the rob to be attached
     
-    # # print(len(old_plan[-1]), len(old_plan[-2]))
-    # # print(len(data.qpos))
-    # if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
-    #     old_plan.append(data.qpos.tolist())
-    if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
-        old_plan.append(data.qpos.tolist())
-    
-    # calculate the dropped object (pos, quat) w.r.t grasping robot
-    # print(data.xpos[7]) # == print(data.xanchor[5])
-    # print(mj.mj_id2name(model,1,7+21))
-    
-    if (len(attch_obj) != 0 and len(attch_rob) != 0):
-        rela_pos = [[] for k in range(len(attch_obj))]
-        rela_quat = [[] for k in range(len(attch_obj))]
-        if len(attch_obj) == len(attch_rob):
-            for j in range(len(attch_obj)):
-                if ini_rob[attch_obj[j]]['type'] == "ur5_vacuum": #the value in the list is the index of the robot
-                    offset = 0.135 - 0.031
-                elif ini_rob[attch_obj[j]]['type'] == "ur5_gripper":
-                    offset = 0.2 - 0.031
+    # visulize the mujoco scene
+    while not glfw.window_should_close(window):
+        start_time = time.time()
+        time_prev = data.time  #the total time simulation spent, minimal slot is model.opt.timestep
+        # while (data.time - time_prev < step_size):
+        #     mj.mj_step(model, data)
+        
+        if current_step >= max_steps:
+            break
 
-                # eef_pos = data.xpos[1+6 + 7*attch_rob]  #the most end body frame
-                # eef_xmat = data.xmat[1+6 + 7*attch_rob] #index 0 is the worldbody
-                eef_pos = data.geom_xpos[28 + 29*attch_rob[j]]
-                eef_xmat = data.geom_xmat[28 + 29*attch_rob[j]]
-                eef_mat = [eef_xmat[i:i+3] for i in range(0, len(eef_xmat), 3)]
-                rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*attch_obj[j]:6*robot_num+7*attch_obj[j]+3].tolist(), [0, 0, 0])], 
-                        quat2r(data.qpos[6*robot_num+7*attch_obj[j]+3 : 6*robot_num+7*attch_obj[j]+7]).as_matrix(), offset)
-                # rela_quat_xyzw = r2quat(rela_mat)
-                # rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
-                # print(eef_pos)
-        else:
-            print("please check the number of the attached objects is equal to the number of reference robots or not.")
 
-    viewport_width, viewport_height = glfw.get_framebuffer_size(
-            window)
-    viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
+        if current_step == sample_step and first_check:
+            physics_flag = True
+            frames = False
 
-    # collisoin detection
-    # for contact in data.contact:
-    #     if contact.geom1 < model.ngeom and contact.geom2 < model.ngeom:
-    #         # print(f"Collision detected between {contact.geom1} and {contact.geom2}")
-    #         print(f"Collision detected with distance {contact.dist} at contact point {contact.pos}")
+        #check add physical simulation to single obj or multiple objs
+        if physics_flag:
+            if (single_or_n == "Y"):
+                skip_idx = drop_obj
+                attch_rob = attch_rob
+                skip_nums += [skip_idx]
+                skip_flag = True
+                # data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = 0
+                data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6] = full_vel(obj_pos[skip_idx][current_step-1][0:3],obj_pos[skip_idx][current_step][0:3]
+                                                                                ,obj_quat[skip_idx][current_step-1][0:4], obj_quat[skip_idx][current_step][0:4]
+                                                                                ,1/frame_rate)
+                print(f"velocity:{data.qvel[6*robot_num+6*skip_idx : 6*robot_num+6*skip_idx+6]}")
+                for k in range(robot_num):
+                    start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
+                print(current_step)
+            else:
+                skip_nums = obj_held #drop all the held objs
+                skip_flag = True
+                # data.qvel[:] = 0 #set the initial velocity to zero
+                for l in skip_nums:
+                    data.qvel[6*robot_num+6*l : 6*robot_num+6*l+6] = full_vel(obj_pos[l][current_step-1][0:3],obj_pos[l][current_step][0:3]
+                                                                                ,obj_quat[l][current_step-1][0:4], obj_quat[l][current_step][0:4]
+                                                                                ,1/frame_rate)
+                for k in range(robot_num):
+                    start_pose[k] = joint_traj[k][current_step][0:6]  # record the joints of robots when objects dropped
+                print(current_step)
+        
+        if skip_flag:
+            physics_flag = False
+            record_flag = True
+            first_check = False
 
-    # Render the scene
-    mj.mjv_updateScene(model, data, opt, None, cam,
-                        mj.mjtCatBit.mjCAT_ALL.value, scene)
-    mj.mjr_render(viewport, scene, context)
-    glfw.swap_buffers(window)
-    glfw.poll_events()
+        # set the qpos values of current step
+        for k in range(robot_num):
+            data.qpos[6*k:6*k+6] = joint_traj[k][current_step][0:6]
 
-    # control the execution time of each while loop to be 1/frame_rate, so one loop is one frame
-    remain_time = 1/frame_rate - (time.time()-start_time)
-    if remain_time > 0:
-        time.sleep(remain_time)
+        for l in range(obj_num):
+            if l in skip_nums:
+                # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
+                if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
+                    data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
+                data.xfrc_applied[1+7*robot_num+l] = [0, 0, 0, 0, 0, 0] # enable the gravity for the dropped objects
+                
+                continue
+            else:
+                data.qpos[6*robot_num+7*l:6*robot_num+7*l+7] = obj_pos[l][current_step][0:3] + obj_quat[l][current_step][0:4]
+                data.xfrc_applied[1+7*robot_num+l] = [0, 0, 9.8, 0, 0, 0] # compensate the gravity for all so the objects won't fall by gravity
+                # print(data.xfrc_applied)
 
+        if frames:
+            current_step += 1
+
+
+        # Update simulation state based on current step
+        # print(data.qpos[26])
+        # data_tem = mj.MjData(model)
+        # print(data_tem.qpos[26])
+        if not physics_flag:
+            mj.mj_step(model, data)
+        
+        # # print(len(old_plan[-1]), len(old_plan[-2]))
+        # # print(len(data.qpos))
+        # if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
+        #     old_plan.append(data.qpos.tolist())
+        if (current_step > 0) and (not physics_flag) and diff(old_plan[-1], old_plan[-2], 1e-5) and record_flag:
+            old_plan.append(data.qpos.tolist())
+        
+        # calculate the dropped object (pos, quat) w.r.t grasping robot
+        # print(data.xpos[7]) # == print(data.xanchor[5])
+        # print(mj.mj_id2name(model,1,7+21))
+        
+        if (len(attch_obj) != 0 and len(attch_rob) != 0):
+            rela_pos = [[] for k in range(len(attch_obj))]
+            rela_quat = [[] for k in range(len(attch_obj))]
+            if len(attch_obj) == len(attch_rob):
+                for j in range(len(attch_obj)):
+                    if ini_rob[attch_obj[j]]['type'] == "ur5_vacuum": #the value in the list is the index of the robot
+                        offset = 0.135 - 0.031
+                    elif ini_rob[attch_obj[j]]['type'] == "ur5_gripper":
+                        offset = 0.2 - 0.031
+
+                    # eef_pos = data.xpos[1+6 + 7*attch_rob]  #the most end body frame
+                    # eef_xmat = data.xmat[1+6 + 7*attch_rob] #index 0 is the worldbody
+                    eef_pos = data.geom_xpos[28 + 29*attch_rob[j]]
+                    eef_xmat = data.geom_xmat[28 + 29*attch_rob[j]]
+                    eef_mat = [eef_xmat[i:i+3] for i in range(0, len(eef_xmat), 3)]
+                    rela_pos[j], rela_quat[j] = rela_corrd(eef_pos, eef_mat, [a + b for a, b in zip(data.qpos[6*robot_num+7*attch_obj[j]:6*robot_num+7*attch_obj[j]+3].tolist(), [0, 0, 0])], 
+                            quat2r(data.qpos[6*robot_num+7*attch_obj[j]+3 : 6*robot_num+7*attch_obj[j]+7]).as_matrix(), offset)
+                    # rela_quat_xyzw = r2quat(rela_mat)
+                    # rela_quat = np.array([rela_quat_xyzw[3],rela_quat_xyzw[0],rela_quat_xyzw[1],rela_quat_xyzw[2]])
+                    # print(eef_pos)
+            else:
+                print("please check the number of the attached objects is equal to the number of reference robots or not.")
+
+        viewport_width, viewport_height = glfw.get_framebuffer_size(
+                window)
+        viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
+
+        # collisoin detection
+        # for contact in data.contact:
+        #     if contact.geom1 < model.ngeom and contact.geom2 < model.ngeom:
+        #         # print(f"Collision detected between {contact.geom1} and {contact.geom2}")
+        #         print(f"Collision detected with distance {contact.dist} at contact point {contact.pos}")
+
+        # Render the scene
+        mj.mjv_updateScene(model, data, opt, None, cam,
+                            mj.mjtCatBit.mjCAT_ALL.value, scene)
+        mj.mjr_render(viewport, scene, context)
+        glfw.swap_buffers(window)
+        glfw.poll_events()
+
+        # control the execution time of each while loop to be 1/frame_rate, so one loop is one frame
+        remain_time = 1/frame_rate - (time.time()-start_time)
+        if remain_time > 0:
+            time.sleep(remain_time)
+
+        if not diff(old_plan[-1], old_plan[-2], 1e-5): #quit the while-loop when objects stay statically
+            break
 
 glfw.terminate()
 
@@ -640,76 +680,81 @@ del old_plan[0:2] # correspond to definition of old_plan
 # for i in range(len(old_plan)):
 #     for l in range(obj_num):
 #         old_plan[i][6*robot_num+7*l+3-1] += 0.05
-# with open(f'old_plan_{scene_flag}_{sample_indx}_rela.json', 'w') as file:
-#     json.dump(old_plan, file, indent=4)
+old_plan_path = os.path.join(step_folder, f'old_plan_{scene_flag}_{sample_indx}_rela.json')
+with open(old_plan_path, 'w') as file:
+    json.dump(old_plan, file, indent=4)
 # print([a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])])
 
 # output the new positions of the objects only when they get a new position
-# if (len(skip_nums) > 0):
-#     x = 0
-#     for l in range(obj_num):
-#         print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
+if (len(skip_nums) > 0):
+    x = 0
+    for l in range(obj_num):
+        print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
 
-#     # output the new objs config
-#     obj_output = []
-#     for l in range(obj_num):
-#         abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
-#         if (scene_flag == "husky"):
-#             abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added below
+    # output the new objs config
+    obj_output = []
+    obj_output_path = os.path.join(step_folder, f'{scene_flag}_obj_output_{sample_indx}_rela.json')
+    # obj_output_path = f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/objects/{scene_flag}_obj_output_{sample_indx}_rela.json'
+    for l in range(obj_num):
+        abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
+        if (scene_flag == "husky"):
+            abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added below
 
-#         if l in skip_nums: # only when objs drop on the table shall we add the gap
-#             abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.0])]  #add the gap between table,table_base
-#         abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
-#         goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
-#         goal_quat = ini_obj[l]['goal_quat'].tolist()
+        if l in skip_nums: # only when objs drop on the table shall we add the gap
+            abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.0])]  #add the gap between table,table_base
+        abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
+        goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
+        goal_quat = ini_obj[l]['goal_quat'].tolist()
 
 
-#         if (l in attch_idx):
-#             abs_objpos = rela_pos[x].tolist()
-#             abs_objquat = rela_quat[x].tolist()
-#             # goal_pos/quat still w.r.t "table"
+        if (l in attch_obj):
+            abs_objpos = rela_pos[x].tolist()
+            abs_objquat = rela_quat[x].tolist()
+            # goal_pos/quat still w.r.t "table"
 
-#             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
-#                            'start_pos': abs_objpos, 
-#                            'start_quat': abs_objquat,
-#                            'goal_pos': goal_pos,
-#                            'goal_quat': goal_quat,
-#                            'parent': f'a{attch_rob[x]}_pen_tip'})
-#             x += 1
-#         else:
-#             obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
-#                             'start_pos': abs_objpos, 
-#                             'start_quat': abs_objquat,
-#                             'goal_pos': goal_pos,
-#                             'goal_quat': goal_quat})
-#     obj_out = {'objects': obj_output}
-#     with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/objects/{scene_flag}_obj_output_{sample_indx}_rela_test.json', 'w') as file:
-#             json.dump(obj_out, file, indent=4)
-#     # output the robots config
-#     robot_output = []
-#     if (scene_flag == "husky"):
-#         for k in range(robot_num):
-#                 if (k == 0):
-#                     robot_output.append({'parent': "left_arm_bulkhead_joint",
-#                                          'base_pos': ini_rob[k]['base_pos'].tolist(), 
-#                                          'base_quat': ini_rob[k]['base_quat'].tolist(),
-#                                          'type': ini_rob[k]['type'],
-#                                          'start_pose': start_pose[k]})
-#                 elif (k == 1):
-#                     robot_output.append({'parent': "right_arm_bulkhead_joint",
-#                                          'base_pos': ini_rob[k]['base_pos'].tolist(), 
-#                                          'base_quat': ini_rob[k]['base_quat'].tolist(),
-#                                          'type': ini_rob[k]['type'],
-#                                          'start_pose': start_pose[k]})
-#         robot_out = {'robots': robot_output}
-#         with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json', 'w') as file:
-#                 json.dump(robot_out, file, indent=4)
-#     else:
-#         for k in range(robot_num):
-#                 robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
-#                                      'base_quat': ini_rob[k]['base_quat'].tolist(),
-#                                      'type': ini_rob[k]['type'],
-#                                      'start_pose': start_pose[k]})
-#         robot_out = {'robots': robot_output}
-#         with open(f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela_test.json', 'w') as file:
-#                 json.dump(robot_out, file, indent=4)
+            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+                           'start_pos': abs_objpos, 
+                           'start_quat': abs_objquat,
+                           'goal_pos': goal_pos,
+                           'goal_quat': goal_quat,
+                           'parent': f'a{attch_rob[x]}_pen_tip'})
+            x += 1
+        else:
+            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+                            'start_pos': abs_objpos, 
+                            'start_quat': abs_objquat,
+                            'goal_pos': goal_pos,
+                            'goal_quat': goal_quat})
+    obj_out = {'objects': obj_output}
+    with open(obj_output_path, 'w') as file:
+            json.dump(obj_out, file, indent=4)
+    # output the robots config
+    robot_output = []
+    robot_output_path = os.path.join(step_folder, f'{scene_flag}_robot_output_{sample_indx}_rela.json')
+    # obj_output_path = f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json'
+    if (scene_flag == "husky"):
+        for k in range(robot_num):
+                if (k == 0):
+                    robot_output.append({'parent': "left_arm_bulkhead_joint",
+                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                         'type': ini_rob[k]['type'],
+                                         'start_pose': start_pose[k]})
+                elif (k == 1):
+                    robot_output.append({'parent': "right_arm_bulkhead_joint",
+                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                         'type': ini_rob[k]['type'],
+                                         'start_pose': start_pose[k]})
+        robot_out = {'robots': robot_output}
+        with open(robot_output_path, 'w') as file:
+                json.dump(robot_out, file, indent=4)
+    else:
+        for k in range(robot_num):
+                robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                     'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                     'type': ini_rob[k]['type'],
+                                     'start_pose': start_pose[k]})
+        robot_out = {'robots': robot_output}
+        with open(robot_output_path, 'w') as file:
+                json.dump(robot_out, file, indent=4)
