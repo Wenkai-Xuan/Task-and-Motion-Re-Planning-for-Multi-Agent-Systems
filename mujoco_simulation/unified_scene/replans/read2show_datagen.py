@@ -93,8 +93,8 @@ def diff(list1, list2, e):
             return True  # If any pair has a difference greater than or equal to the error
     return False
 
-def is_outside_range(xy, bound_x, bound_y):
-    if xy[0] < -bound_x or xy[0] > bound_x or xy[1] < -bound_y or xy[1] > bound_y:
+def is_outside_range(xy, bound_xy):
+    if xy[0] < -bound_xy[0] or xy[0] > bound_xy[0] or xy[1] < -bound_xy[1] or xy[1] > bound_xy[1]:
         return True
     return False
 
@@ -426,15 +426,53 @@ for key in ini_scene['Robots']:  # key is the name of the robot
         start_pose.append(ini_scene['Robots'][key]['initial_pose'].tolist())
 
 
+max_steps = length
+step_size = 1.0 / max_steps
+rob_hold=[]
+obj_held = []
+obj_rob_pair = []
+hold_step = None
+hold_dict = []
+frame_rate = 60
+single_or_n = "Y"
+
+#create the output folder to store the new initial configs for replanning
+output_folder = f'replan_{scene_flag}_{sample_indx}_' + datetime.now().strftime("%Y%m%d_%H%M%S")
+os.makedirs(output_folder, exist_ok=True)
+
+#go through all the steps to check when robot holds object and store the info
+for step in range(max_steps):
+    if (step == 0):
+        continue
+    # check whether any object is held by any robots and which robots hold
+    for l in range(obj_num):
+        for k in range(robot_num):
+            # print(np.linalg.norm(np.array(ee_pos[k][current_step][0:3]) - np.array(obj_pos[l][current_step][0:3])))
+            if rob_hold_obj(ee_pos[k][step][0:3], obj_pos[l][step][0:3], 0.7):
+                # print(f"Robot{k} holds the object{l+1}")
+                rob_hold += [k]
+                obj_held += [l]
+                obj_rob_pair += [(l, k)] #in case mutiple robs hold one obj, then len(rob_hole) != len(obj_held)
+                hold_step = step
+    
+    if hold_step != None:
+        hold_dict.append({"hold_step": hold_step, "obj_rob_pair": obj_rob_pair, "rob_hold": rob_hold, "obj_held": obj_held})
+    
+    rob_hold=[]
+    obj_held = []
+    obj_rob_pair = [] #reset the obj_rob_pair to empty after we record unless they will contain all (obj, rob) pairs
+    hold_step = None #reset the hold_step to None after we record this step
+
+hold_dict_path = os.path.join(output_folder, f'hold_info_{scene_flag}_{sample_indx}.json')
+
+with open(hold_dict_path, 'w') as file:
+    json.dump(hold_dict, file, indent=4)
+
+
 # MuJoCo data structures
-model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
-data = mj.MjData(model)                # MuJoCo data
+model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model, unchanged
 cam = mj.MjvCamera()                        # Abstract camera
 opt = mj.MjvOption()                        # visualization options
-
-# for i in range(model.nbody):
-#     print(model.body(i).name)
-
 # Init GLFW, create window, make OpenGL context current, request v-sync
 glfw.init()
 window = glfw.create_window(1200, 900, "Demo", None, None)
@@ -468,65 +506,35 @@ cam.lookat =np.array([ 0.0 , 0.0 , 0.0 ])
 # data.qpos[1] = np.pi / 3
 # data.qpos[2] = np.pi / 4
 
-#initialize the controller
-init_controller(model,data)
 
-#set the controller
-mj.set_mjcb_control(controller)
+#loop within all the steps that robots holding objects to make drop happen
+for i in range(len(hold_dict)):
+    data = mj.MjData(model)                # MuJoCo data
 
-old_plan = [[1 for k in range(len(data.qpos))], [2 for k in range(len(data.qpos))]]
-current_step = 0
-max_steps = length
-step_size = 1.0 / max_steps
-frames = False
-physics_flag = False
-skip_flag = False
-record_flag = False
-skip_nums = []
-skip_idx = None
-rob_hold=[]
-obj_held = []
-obj_rob_pair = []
-attch_obj = []
-hold_step = None
-hold_dict = []
-first_check = True
-frame_rate = 60
-single_or_n = "Y" #whether to drop single object or not, especially multiple objects are held by multiple robots
+    # for i in range(model.nbody):
+    #     print(model.body(i).name)
 
-#create the output folder to store the new initial configs for replanning
-output_folder = f'replan_{scene_flag}_{sample_indx}_' + datetime.now().strftime("%Y%m%d_%H%M%S")
-os.makedirs(output_folder, exist_ok=True)
-
-#go through all the steps to check when robot holds object and store the info
-for step in range(max_steps):
-    if (step == 0):
-        continue
-    # check whether any object is held by any robots and which robots hold
-    for l in range(obj_num):
-        for k in range(robot_num):
-            # print(np.linalg.norm(np.array(ee_pos[k][current_step][0:3]) - np.array(obj_pos[l][current_step][0:3])))
-            if rob_hold_obj(ee_pos[k][step][0:3], obj_pos[l][step][0:3], 0.7):
-                # print(f"Robot{k} holds the object{l+1}")
-                rob_hold += [k]
-                obj_held += [l]
-                obj_rob_pair += [(l, k)] #in case mutiple robs hold one obj, then len(rob_hole) != len(obj_held)
-                hold_step = step
     
-    if hold_step != None:
-        hold_dict.append({"hold_step": hold_step, "obj_rob_pair": obj_rob_pair, "rob_hold": rob_hold, "obj_held": obj_held})
-    
-    rob_hold=[]
-    obj_held = []
-    obj_rob_pair = [] #reset the obj_rob_pair to empty after we record unless they will contain all (obj, rob) pairs
-    hold_step = None #reset the hold_step to None after we record this step
+    # #initialize the controller
+    # init_controller(model,data)
 
-hold_dict_path = os.path.join(output_folder, f'hold_info_{scene_flag}_{sample_indx}.json')
+    # #set the controller
+    # mj.set_mjcb_control(controller)
 
-with open(hold_dict_path, 'w') as file:
-    json.dump(hold_dict, file, indent=4)
-i=100
-if i == 100:
+    old_plan = [[1 for k in range(len(data.qpos))], [2 for k in range(len(data.qpos))]]
+    current_step = 0
+    frames = True
+    physics_flag = False
+    skip_flag = False
+    record_flag = False
+    skip_nums = []
+    skip_idx = None
+    attch_obj = []
+    first_check = True
+
+
+
+
     sample_step = hold_dict[i]['hold_step']
 
     step_folder = os.path.join(output_folder, f"{sample_step}")
@@ -536,7 +544,7 @@ if i == 100:
         drop_obj = random.choice(hold_dict[i]['obj_held']) #the obj to be dropped
         attch_obj = [x for x in hold_dict[i]['obj_held'] if x != drop_obj] #the obj to be attached
         attch_rob = [pair[1] for pair in hold_dict[i]['obj_rob_pair'] if pair[0] != drop_obj] #the rob to be attached
-    
+
     # visulize the mujoco scene
     while not glfw.window_should_close(window):
         start_time = time.time()
@@ -591,7 +599,7 @@ if i == 100:
         for l in range(obj_num):
             if l in skip_nums:
                 # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-                if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
+                if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], [1.5, 1.5]):
                     data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
                 data.xfrc_applied[1+7*robot_num+l] = [0, 0, 0, 0, 0, 0] # enable the gravity for the dropped objects
                 
@@ -671,90 +679,92 @@ if i == 100:
         if not diff(old_plan[-1], old_plan[-2], 1e-5): #quit the while-loop when objects stay statically
             break
 
-glfw.terminate()
+    # glfw.terminate()
 
-# os.environ["skips"] = str(skip_nums)
+    # os.environ["skips"] = str(skip_nums)
 
-del old_plan[0:2] # correspond to definition of old_plan
-# # do we need to add the table gap?????
-# for i in range(len(old_plan)):
-#     for l in range(obj_num):
-#         old_plan[i][6*robot_num+7*l+3-1] += 0.05
-old_plan_path = os.path.join(step_folder, f'old_plan_{scene_flag}_{sample_indx}_rela.json')
-with open(old_plan_path, 'w') as file:
-    json.dump(old_plan, file, indent=4)
-# print([a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])])
+    del old_plan[0:2] # correspond to definition of old_plan
+    # # do we need to add the table gap?????
+    # for i in range(len(old_plan)):
+    #     for l in range(obj_num):
+    #         old_plan[i][6*robot_num+7*l+3-1] += 0.05
+    old_plan_path = os.path.join(step_folder, f'old_plan_{scene_flag}_{sample_indx}_rela.json')
+    with open(old_plan_path, 'w') as file:
+        json.dump(old_plan, file, indent=4)
+    # print([a + b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0, 0.05])])
 
-# output the new positions of the objects only when they get a new position
-if (len(skip_nums) > 0):
-    x = 0
-    for l in range(obj_num):
-        print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
+    # output the new positions of the objects only when they get a new position
+    if (len(skip_nums) > 0):
+        x = 0
+        for l in range(obj_num):
+            print(f"obj{l+1}: {data.qpos[6*robot_num+7*l:6*robot_num+7*l+7]}")
 
-    # output the new objs config
-    obj_output = []
-    obj_output_path = os.path.join(step_folder, f'{scene_flag}_obj_output_{sample_indx}_rela.json')
-    # obj_output_path = f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/objects/{scene_flag}_obj_output_{sample_indx}_rela.json'
-    for l in range(obj_num):
-        abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
-        if (scene_flag == "husky"):
-            abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added below
+        # output the new objs config
+        obj_output = []
+        obj_output_path = os.path.join(step_folder, f'{scene_flag}_obj_output_{sample_indx}_rela.json')
+        # obj_output_path = f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/objects/{scene_flag}_obj_output_{sample_indx}_rela.json'
+        for l in range(obj_num):
+            abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
+            if (scene_flag == "husky"):
+                abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added below
 
-        if l in skip_nums: # only when objs drop on the table shall we add the gap
-            abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.0])]  #add the gap between table,table_base
-        abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
-        goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
-        goal_quat = ini_obj[l]['goal_quat'].tolist()
+            if l in skip_nums: # only when objs drop on the table shall we add the gap
+                abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.0])]  #add the gap between table,table_base
+            abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
+            goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
+            goal_quat = ini_obj[l]['goal_quat'].tolist()
 
 
-        if (l in attch_obj):
-            abs_objpos = rela_pos[x].tolist()
-            abs_objquat = rela_quat[x].tolist()
-            # goal_pos/quat still w.r.t "table"
+            if (l in attch_obj):
+                abs_objpos = rela_pos[x].tolist()
+                abs_objquat = rela_quat[x].tolist()
+                # goal_pos/quat still w.r.t "table"
 
-            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
-                           'start_pos': abs_objpos, 
-                           'start_quat': abs_objquat,
-                           'goal_pos': goal_pos,
-                           'goal_quat': goal_quat,
-                           'parent': f'a{attch_rob[x]}_pen_tip'})
-            x += 1
-        else:
-            obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+                obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
                             'start_pos': abs_objpos, 
                             'start_quat': abs_objquat,
                             'goal_pos': goal_pos,
-                            'goal_quat': goal_quat})
-    obj_out = {'objects': obj_output}
-    with open(obj_output_path, 'w') as file:
-            json.dump(obj_out, file, indent=4)
-    # output the robots config
-    robot_output = []
-    robot_output_path = os.path.join(step_folder, f'{scene_flag}_robot_output_{sample_indx}_rela.json')
-    # obj_output_path = f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json'
-    if (scene_flag == "husky"):
-        for k in range(robot_num):
-                if (k == 0):
-                    robot_output.append({'parent': "left_arm_bulkhead_joint",
-                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                         'type': ini_rob[k]['type'],
-                                         'start_pose': start_pose[k]})
-                elif (k == 1):
-                    robot_output.append({'parent': "right_arm_bulkhead_joint",
-                                         'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                         'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                         'type': ini_rob[k]['type'],
-                                         'start_pose': start_pose[k]})
-        robot_out = {'robots': robot_output}
-        with open(robot_output_path, 'w') as file:
-                json.dump(robot_out, file, indent=4)
-    else:
-        for k in range(robot_num):
-                robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
-                                     'base_quat': ini_rob[k]['base_quat'].tolist(),
-                                     'type': ini_rob[k]['type'],
-                                     'start_pose': start_pose[k]})
-        robot_out = {'robots': robot_output}
-        with open(robot_output_path, 'w') as file:
-                json.dump(robot_out, file, indent=4)
+                            'goal_quat': goal_quat,
+                            'parent': f'a{attch_rob[x]}_pen_tip'})
+                x += 1
+            else:
+                obj_output.append({'shape': ini_obj[l]['shape'].tolist(),
+                                'start_pos': abs_objpos, 
+                                'start_quat': abs_objquat,
+                                'goal_pos': goal_pos,
+                                'goal_quat': goal_quat})
+        obj_out = {'objects': obj_output}
+        with open(obj_output_path, 'w') as file:
+                json.dump(obj_out, file, indent=4)
+        # output the robots config
+        robot_output = []
+        robot_output_path = os.path.join(step_folder, f'{scene_flag}_robot_output_{sample_indx}_rela.json')
+        # obj_output_path = f'/home/tapasdeveloper/build_playground/tapas-learner_3/tapas-learner/multi-agent-tamp-solver/24-data-gen/in/envs/{scene_flag}_robot_output_{sample_indx}_rela.json'
+        if (scene_flag == "husky"):
+            for k in range(robot_num):
+                    if (k == 0):
+                        robot_output.append({'parent': "left_arm_bulkhead_joint",
+                                            'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                            'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                            'type': ini_rob[k]['type'],
+                                            'start_pose': start_pose[k]})
+                    elif (k == 1):
+                        robot_output.append({'parent': "right_arm_bulkhead_joint",
+                                            'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                            'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                            'type': ini_rob[k]['type'],
+                                            'start_pose': start_pose[k]})
+            robot_out = {'robots': robot_output}
+            with open(robot_output_path, 'w') as file:
+                    json.dump(robot_out, file, indent=4)
+        else:
+            for k in range(robot_num):
+                    robot_output.append({'base_pos': ini_rob[k]['base_pos'].tolist(), 
+                                        'base_quat': ini_rob[k]['base_quat'].tolist(),
+                                        'type': ini_rob[k]['type'],
+                                        'start_pose': start_pose[k]})
+            robot_out = {'robots': robot_output}
+            with open(robot_output_path, 'w') as file:
+                    json.dump(robot_out, file, indent=4)
+
+glfw.terminate()
