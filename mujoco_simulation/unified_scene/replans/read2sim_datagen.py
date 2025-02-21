@@ -428,7 +428,7 @@ for key in ini_scene['Robots']:  # key is the name of the robot
 
 # MuJoCo data structures
 model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
-data = mj.MjData(model)                # MuJoCo data
+# data = mj.MjData(model)                # MuJoCo data
 # cam = mj.MjvCamera()                        # Abstract camera
 # opt = mj.MjvOption()                        # visualization options
 
@@ -468,11 +468,11 @@ data = mj.MjData(model)                # MuJoCo data
 # # data.qpos[1] = np.pi / 3
 # # data.qpos[2] = np.pi / 4
 
-#initialize the controller
-init_controller(model,data)
+# #initialize the controller
+# init_controller(model,data)
 
-#set the controller
-mj.set_mjcb_control(controller)
+# #set the controller
+# mj.set_mjcb_control(controller)
 
 # old_plan = [[1 for k in range(len(data.qpos))], [2 for k in range(len(data.qpos))]]
 # current_step = 0
@@ -530,10 +530,12 @@ with open(hold_dict_path, 'w') as file:
 
 #loop within all the steps that robots holding objects to make drop happen
 for i in range(len(hold_dict)):
+    data = mj.MjData(model)                # MuJoCo data
+    
     # set the initial configs of each hold step
     old_plan = [[1 for k in range(len(data.qpos))], [2 for k in range(len(data.qpos))]]
     current_step = 0
-    frames = False
+    frames = True
     physics_flag = False
     skip_flag = False
     record_flag = False

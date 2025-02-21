@@ -534,7 +534,7 @@ for i in range(len(hold_dict)):
 
 
 
-
+    # get the drop/attach info of the current hold_step
     sample_step = hold_dict[i]['hold_step']
 
     step_folder = os.path.join(output_folder, f"{sample_step}")
