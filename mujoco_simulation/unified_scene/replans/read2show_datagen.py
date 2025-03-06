@@ -33,6 +33,16 @@ button_right = False
 lastx = 0
 lasty = 0
 
+def convert_numpy(obj):
+    if isinstance(obj, np.ndarray):
+        [convert_numpy(item) for item in obj.tolist()]  # Convert NumPy array elements recursively
+    elif isinstance(obj, dict):
+        return {key: convert_numpy(value) for key, value in obj.items()}  # Recursively convert dict
+    elif isinstance(obj, list):
+        return [convert_numpy(item) for item in obj]  # Recursively convert lists
+    else:
+        return obj  # Return as-is if not a NumPy array
+
 def rob_hold_obj(rob_frame_zpos, obj_zpos, threshold):
     #check whether the robot holds the object by the z-distance between the most-end geom-frame of robot and the object
     if np.linalg.norm(np.array(rob_frame_zpos) - np.array(obj_zpos)) < threshold:
@@ -437,8 +447,16 @@ frame_rate = 60
 single_or_n = "Y"
 
 #create the output folder to store the new initial configs for replanning
-output_folder = f'replan_{scene_flag}_{sample_indx}_' + datetime.now().strftime("%Y%m%d_%H%M%S")
+output_folder = os.path.join('replan_data', f'replan_ini_{scene_flag}_{sample_indx}_' + datetime.now().strftime("%Y%m%d_%H%M%S"))
 os.makedirs(output_folder, exist_ok=True)
+
+# # create a folder to contain the original trajectory data
+# origin_folder = os.path.join(output_folder, "origin")
+# os.makedirs(origin_folder, exist_ok=True)
+# for text in ['metadata', 'plan', 'scene', 'obj_file', 'robot_file', 'sequence', 'trajectory']:
+#     with open(f'{origin_folder}'+ '/' +f'{text}.json', 'w') as file:
+#         json.dump(convert_numpy(df[text][sample_indx]), file, indent=4)
+
 
 #go through all the steps to check when robot holds object and store the info
 for step in range(max_steps):
@@ -506,9 +524,12 @@ cam.lookat =np.array([ 0.0 , 0.0 , 0.0 ])
 # data.qpos[1] = np.pi / 3
 # data.qpos[2] = np.pi / 4
 
-
+part_hold_dict = random.sample(hold_dict, 5)
+part_hold_dict_path = os.path.join(output_folder, f'part_hold_info_{scene_flag}_{sample_indx}.json')
+with open(part_hold_dict_path, 'w') as file:
+    json.dump(part_hold_dict, file, indent=4)
 #loop within all the steps that robots holding objects to make drop happen
-for i in range(len(hold_dict)):
+for i in range(len(part_hold_dict)):
     data = mj.MjData(model)                # MuJoCo data
 
     # for i in range(model.nbody):
@@ -535,15 +556,15 @@ for i in range(len(hold_dict)):
 
 
     # get the drop/attach info of the current hold_step
-    sample_step = hold_dict[i]['hold_step']
+    sample_step = part_hold_dict[i]['hold_step']
 
     step_folder = os.path.join(output_folder, f"{sample_step}")
     os.makedirs(step_folder, exist_ok=True)
 
-    if len(hold_dict[i]['obj_held']) >= 1:
-        drop_obj = random.choice(hold_dict[i]['obj_held']) #the obj to be dropped
-        attch_obj = [x for x in hold_dict[i]['obj_held'] if x != drop_obj] #the obj to be attached
-        attch_rob = [pair[1] for pair in hold_dict[i]['obj_rob_pair'] if pair[0] != drop_obj] #the rob to be attached
+    if len(part_hold_dict[i]['obj_held']) >= 1:
+        drop_obj = random.choice(part_hold_dict[i]['obj_held']) #the obj to be dropped
+        attch_obj = [x for x in part_hold_dict[i]['obj_held'] if x != drop_obj] #the obj to be attached
+        attch_rob = [pair[1] for pair in part_hold_dict[i]['obj_rob_pair'] if pair[0] != drop_obj] #the rob to be attached
 
     # visulize the mujoco scene
     while not glfw.window_should_close(window):
@@ -732,7 +753,8 @@ for i in range(len(hold_dict)):
                                 'start_pos': abs_objpos, 
                                 'start_quat': abs_objquat,
                                 'goal_pos': goal_pos,
-                                'goal_quat': goal_quat})
+                                'goal_quat': goal_quat,
+                                'parent': "table"})
         obj_out = {'objects': obj_output}
         with open(obj_output_path, 'w') as file:
                 json.dump(obj_out, file, indent=4)
