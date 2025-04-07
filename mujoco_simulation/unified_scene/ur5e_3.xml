@@ -60,7 +60,7 @@
 
   <worldbody>
     <light name="spotlight" mode="targetbodycom" target="wrist_2_link" pos="0 -1 2" />
-    <body name="base" pos="0.7867957694990796 0.6030985653567545 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
+    <body name="base" pos="-0.7171446940728011 0.6652490698315301 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />
@@ -118,7 +118,7 @@
       </body>
     </body>
 
-    <body name="base_1" pos="0.07111341734645524 -0.30538289758582376 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
+    <body name="base_1" pos="-0.07873832910518139 -0.3774593948622002 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />
@@ -176,7 +176,7 @@
       </body>
     </body>
 
-    <body name="base_2" pos="-0.8579091868455347 -0.2977156677709308 0.0" quat="1.0 0.0 0.0 0.0" childclass="ur5e">
+    <body name="base_2" pos="0.7958830231779824 -0.28778967496933 0.0" quat="6.123233995736766e-17 0.0 0.0 1.0" childclass="ur5e">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072" />
       <geom mesh="base_0" material="black" class="visual" />
       <geom mesh="base_1" material="jointgray" class="visual" />

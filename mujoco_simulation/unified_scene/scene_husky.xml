@@ -1,7 +1,7 @@
 <mujoco model="ur5e scene">
   
   <include file="ur5e_husky.xml" />
-  <include file="objs_2.xml" />
+  <include file="objs_3.xml" />
 
   <statistic center="0.3 0 0.4" extent="0.8" />
 

@@ -1,7 +1,7 @@
 <mujoco model="ur5e scene">
   
-  <include file="/home/tapasdeveloper/Desktop/msc_thesis/wenkai/mujoco_simulation/unified_scene/ur5e_conveyor.xml" />
-  <include file="/home/tapasdeveloper/Desktop/msc_thesis/wenkai/mujoco_simulation/unified_scene/objs_2.xml" />
+  <include file="ur5e_conveyor.xml" />
+  <include file="objs_3.xml" />
 
   <statistic center="0.3 0 0.4" extent="0.8" />
 
