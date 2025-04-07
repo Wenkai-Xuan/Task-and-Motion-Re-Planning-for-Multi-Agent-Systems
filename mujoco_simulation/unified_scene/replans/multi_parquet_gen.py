@@ -27,27 +27,29 @@ def latest_sequences(folder_path):
     return latest_plans
 
 # Directory containing the JSON files
-input_directory = "replan_data/replan_ini_conveyor_5_20250304_222155"
+input_directory = "replan_data/replan_ini_shelf_52_20250317_143018"
 output_parquet_file = f"{input_directory}/output_file.parquet"
-
-old_df = pd.read_parquet('../samples_000010000_to_000012113.parquet') # read the old conveyor data
-sample_indx = 5
+env_name = "shelf"
+old_df = pd.read_parquet('../samples_000000000_to_000001376.parquet') # read the old conveyor data
+sample_indx = 52
+part_num = 25 #the number of the selected drop-steps
 
 df = old_df[sample_indx:sample_indx+1]
 dfs = old_df[sample_indx:sample_indx+1]
 
+home_initial_pose = [0, 0.5, -1.2, 0, 1.57, 1.57]
 
 i=1
 # iterate over all the replan-conifgs
 for replan_config in sorted(os.listdir(input_directory)):
     replan_config_path = os.path.join(input_directory, replan_config)
     
-    # only when replan_config is a directory, let's proceed and iterate later
-    if os.path.isdir(replan_config_path):
+    # only when replan_config is a directory named as drop-step, let's proceed and iterate later
+    if os.path.isdir(replan_config_path) and replan_config.isdigit():
         # print(replan_config_path)
-        with open(f'{replan_config_path}/conveyor_obj_output_5_rela.json', 'r') as file:
+        with open(f'{replan_config_path}/{env_name}_obj_output_{sample_indx}_rela.json', 'r') as file:
             obj_file = json.load(file)
-        with open(f'{replan_config_path}/conveyor_robot_output_5_rela.json', 'r') as file:
+        with open(f'{replan_config_path}/{env_name}_robot_output_{sample_indx}_rela.json', 'r') as file:
             robot_file = json.load(file)
 
         plan_directory = latest_sequences(replan_config_path) # get the latest sequence_plan directory
@@ -83,7 +85,20 @@ for replan_config in sorted(os.listdir(input_directory)):
                                 trajectory = json.load(f)
 
 
-                table = pd.DataFrame({'obj_file': [obj_file],
+                if env_name == 'random':
+                    # original data for 'random' scene has 'home_pose'
+                    for i in range(len(robot_file['robots'])):
+                        robot_file['robots'][i]["home_pose"] = df['robot_file'][sample_indx]['robots'][0]['home_pose'].tolist()
+                        # robot_file['robots'][i]["initial_pose"] = home_initial_pose
+                    table = pd.DataFrame({'obj_file': [obj_file],
+                                   'robot_file': [robot_file],
+                                   'metadata': [metadata],
+                                   'plan': [plan],
+                                   'scene': [scene],
+                                   'sequence': [sequence],
+                                   'trajectory': [trajectory]}) # only 'random' scene data doesn't have 'scene_file' and 'obstacles_file'
+                else:
+                    table = pd.DataFrame({'obj_file': [obj_file],
                                    'robot_file': [robot_file],
                                    'metadata': [metadata],
                                    'plan': [plan],
@@ -94,16 +109,20 @@ for replan_config in sorted(os.listdir(input_directory)):
                                    'obstacles_file': df['obstacles_file'].tolist()}) #convert each element to a list to ensure the same length
                 dfs = pd.concat([dfs, table], ignore_index=True)
             
+# original data doesn't have 'parent'
+for i in range(len(dfs['obj_file'][0]['objects'])):
+    dfs['obj_file'][0]['objects'][i]["parent"] = "table"
+# dfs.to_parquet('example.parquet')
 
-dfs['obj_file'][0]['objects'][0]["parent"] = "table"
-dfs['obj_file'][0]['objects'][1]["parent"] = "table"
-# dfs.to_parquet('example.parquet')           
+if env_name != 'random': # original data for 'conveyor', 'husky' and 'shelf' scenes don't have 'start_pose' we add it manually
+    for i in range(len(dfs['robot_file'][0]['robots'])):
+        dfs['robot_file'][0]['robots'][i]["start_pose"] = home_initial_pose #this value is stored in 'scene'
 
-dfs.to_parquet(f"{input_directory}/conveyor_5_rela_50.parquet")
+dfs.to_parquet(f"{input_directory}/{env_name}_{sample_indx}_rela_{part_num}.parquet")
 
-new_dfs = pd.read_parquet(f"{input_directory}/conveyor_5_rela_50.parquet")
+new_dfs = pd.read_parquet(f"{input_directory}/{env_name}_{sample_indx}_rela_{part_num}.parquet")
 
 train = new_dfs[ : int(len(new_dfs)*0.8)]
 test = new_dfs[int(len(new_dfs)*0.8) : ]
-train.to_parquet(f"{input_directory}/conveyor_5_rela_50_train.parquet")
-test.to_parquet(f"{input_directory}/conveyor_5_rela_50_test.parquet")
+train.to_parquet(f"{input_directory}/{env_name}_{sample_indx}_rela_{part_num}_train.parquet")
+test.to_parquet(f"{input_directory}/{env_name}_{sample_indx}_rela_{part_num}_test.parquet")

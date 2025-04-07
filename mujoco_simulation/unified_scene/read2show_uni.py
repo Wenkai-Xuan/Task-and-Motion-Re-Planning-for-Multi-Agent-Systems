@@ -86,8 +86,8 @@ def diff(list1, list2, e):
             return True  # If any pair has a difference greater than or equal to the error
     return False
 
-def is_outside_range(xy, bound_x, bound_y):
-    if xy[0] < -bound_x or xy[0] > bound_x or xy[1] < -bound_y or xy[1] > bound_y:
+def is_outside_range(xy, bounds): # bouinds = [x1, -x2, y1, -y2]
+    if xy[0] < bounds[1] or xy[0] > bounds[0] or xy[1] < bounds[3] or xy[1] > bounds[2]:
         return True
     return False
 
@@ -273,21 +273,29 @@ if ('divider' in df['scene'][sample_indx]['Obstacles'].keys()):
     xml_path = 'scene_shelf.xml'
     rob_file = 'ur5e_shelf.xml'
     table_gap = [0, 0.05, 0.55]  # "abs_pos" of obstacle "table"
+    hold_threshold = 0.7
+    invis_wall = [1.1, -1.1, 0.3, -1.0]
 elif ('base_link' in df['scene'][sample_indx]['Obstacles'].keys()):
     scene_flag = "husky"
     xml_path = 'scene_husky.xml'
     rob_file = 'ur5e_husky.xml'
     table_gap = [0, 0, 0]
+    hold_threshold = 0.25
+    invis_wall = [0.6, -0.6, 0.36, -0.36]
 elif ('table_left' in df['scene'][sample_indx]['Obstacles'].keys()):
     scene_flag = "conveyor"
     xml_path = 'scene_conveyor.xml'
     rob_file = 'ur5e_conveyor.xml'
     table_gap = [0, 0.05, 0.55]
+    hold_threshold = 0.7
+    invis_wall = [1.5, -1.5, 1.5, -1.5]
 else:
     scene_flag = "random"
     xml_path = 'scene_random.xml'
     rob_file = f'ur5e_{robot_num}.xml'
     table_gap = [0, 0.05, 0.55]
+    hold_threshold = 0.7
+    invis_wall = [1.5, -1.5, 1.5, -1.5]
 
 # set the object file in scene file according to the number of objects
 tree = ET.parse(xml_path)
@@ -533,7 +541,7 @@ while not glfw.window_should_close(window):
     for l in range(obj_num):
         if l in skip_nums:
             # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
+            if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], invis_wall):
                 data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
             data.xfrc_applied[1+7*robot_num+l] = [0, 0, 0, 0, 0, 0] # enable the gravity for the dropped objects
             

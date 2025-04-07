@@ -17,12 +17,12 @@ simend = 2 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
-sample_indx = 5  #decide which sample to read and show
+sample_indx = 25  #decide which sample to read and show
 file_save = 0  #set to 1 to generate data files
 
 
 # load the joint states from dataset
-df = pd.read_parquet('../samples_000010000_to_000012113.parquet')
+df = pd.read_parquet('../samples_000000000_to_000001376.parquet')
 
 
 
@@ -103,8 +103,8 @@ def diff(list1, list2, e):
             return True  # If any pair has a difference greater than or equal to the error
     return False
 
-def is_outside_range(xy, bound_x, bound_y):
-    if xy[0] < -bound_x or xy[0] > bound_x or xy[1] < -bound_y or xy[1] > bound_y:
+def is_outside_range(xy, bounds): # bouinds = [x1, -x2, y1, -y2]
+    if xy[0] < bounds[1] or xy[0] > bounds[0] or xy[1] < bounds[3] or xy[1] > bounds[2]:
         return True
     return False
 
@@ -290,21 +290,29 @@ if ('divider' in df['scene'][sample_indx]['Obstacles'].keys()):
     xml_path = 'scene_shelf.xml'
     rob_file = 'ur5e_shelf.xml'
     table_gap = [0, 0.05, 0.55]  # "abs_pos" of obstacle "table"
+    hold_threshold = 0.7
+    invis_wall = [1.1, -1.1, 0.3, -1.0]
 elif ('base_link' in df['scene'][sample_indx]['Obstacles'].keys()):
     scene_flag = "husky"
     xml_path = 'scene_husky.xml'
     rob_file = 'ur5e_husky.xml'
     table_gap = [0, 0, 0]
+    hold_threshold = 0.25
+    invis_wall = [0.6, -0.6, 0.36, -0.36]
 elif ('table_left' in df['scene'][sample_indx]['Obstacles'].keys()):
     scene_flag = "conveyor"
     xml_path = 'scene_conveyor.xml'
     rob_file = 'ur5e_conveyor.xml'
     table_gap = [0, 0.05, 0.55]
+    hold_threshold = 0.7
+    invis_wall = [1.5, -1.5, 1.5, -1.5]
 else:
     scene_flag = "random"
     xml_path = 'scene_random.xml'
     rob_file = f'ur5e_{robot_num}.xml'
     table_gap = [0, 0.05, 0.55]
+    hold_threshold = 0.7
+    invis_wall = [1.5, -1.5, 1.5, -1.5]
 
 
 # read the traj data of robots and objects
@@ -524,7 +532,7 @@ for step in range(max_steps):
     for l in range(obj_num):
         for k in range(robot_num):
             # print(np.linalg.norm(np.array(ee_pos[k][current_step][0:3]) - np.array(obj_pos[l][current_step][0:3])))
-            if rob_hold_obj(ee_pos[k][step][0:3], obj_pos[l][step][0:3], 0.7):
+            if rob_hold_obj(ee_pos[k][step][0:3], obj_pos[l][step][0:3], hold_threshold):
                 # print(f"Robot{k} holds the object{l+1}")
                 rob_hold += [k]
                 obj_held += [l]
@@ -545,8 +553,8 @@ with open(hold_dict_path, 'w') as file:
     json.dump(hold_dict, file, indent=4)
 
 # glfw.terminate()
-
-part_hold_dict = random.sample(hold_dict, 50)
+part_num = 50 #the number of the selected drop-steps
+part_hold_dict = random.sample(hold_dict, part_num)
 part_hold_dict_path = os.path.join(output_folder, f'part_hold_info_{scene_flag}_{sample_indx}.json')
 with open(part_hold_dict_path, 'w') as file:
     json.dump(part_hold_dict, file, indent=4)
@@ -631,7 +639,7 @@ for i in range(len(part_hold_dict)):
         for l in range(obj_num):
             if l in skip_nums:
                 # print(data.qpos[6*robot_num+7*l:6*robot_num+7*l+7])
-                if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], 1.5, 1.5):
+                if is_outside_range(data.qpos[6*robot_num+7*l:6*robot_num+7*l+2], invis_wall):
                     data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2] = -data.qvel[6*robot_num+6*l : 6*robot_num+6*l+2]
                 data.xfrc_applied[1+7*robot_num+l] = [0, 0, 0, 0, 0, 0] # enable the gravity for the dropped objects
                 
@@ -715,10 +723,10 @@ for i in range(len(part_hold_dict)):
         for l in range(obj_num):
             abs_objpos = data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist()
             if (scene_flag == "husky"):
-                abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # the gap 0.05 is added below
+                abs_objpos = [a - b for a, b in zip(data.qpos[6*robot_num+7*l:6*robot_num+7*l+3].tolist(), [0, 0.05, 0.4])] # table gaps is subtracted, the gap 0.05 is added below
 
             if l in skip_nums: # only when objs drop on the table shall we add the gap
-                abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.0])]  #add the gap between table,table_base
+                abs_objpos = [a + b for a, b in zip(abs_objpos, [0, 0, 0.0])]  # invivisble table is added, the gap between table,table_base is unnecessary
             abs_objquat = data.qpos[6*robot_num+7*l+3:6*robot_num+7*l+7].tolist()
             goal_pos = ini_obj[l]['goal_pos'].tolist() #this cor is w.r.t "table"
             goal_quat = ini_obj[l]['goal_quat'].tolist()
