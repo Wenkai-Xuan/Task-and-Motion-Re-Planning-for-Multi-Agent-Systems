@@ -1,12 +1,22 @@
-# wenkai
+# Task-and-Motion-Re-Planning-for-Multi-Agent-Systems
 
+## Work Components
 
+This work mainly contains two parts: *Motion Re-Planning* and *Makespan Prediction*. There is another related repository to this work: [tapas-learner](https://github.com/Wenkai-Xuan/tapas-learner.git).
 
 ## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+This work is mainly built by *Python*, I recommand you to install [*Anaconda*](https://www.anaconda.com/) as the virtual environment.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+To make it possible for you to view the simulation, you have to install mujoco==3.2.3 and glfw==2.7.0.
+
+Or instead, you can directly install all packages as following:
+
+```
+git clone git@github.com:Wenkai-Xuan/Task-and-Motion-Re-Planning-for-Multi-Agent-Systems.git
+cd Task-and-Motion-Re-Planning-for-Multi-Agent-Systems
+pip install -r requirements.txt
+```
 
 ## Add your files
 
