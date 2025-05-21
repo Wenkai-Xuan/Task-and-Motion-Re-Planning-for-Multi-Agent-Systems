@@ -18,6 +18,8 @@ cd Task-and-Motion-Re-Planning-for-Multi-Agent-Systems
 pip install -r requirements.txt
 ```
 
+All of these packages are compatible with *Ubuntu 24.04.1 LTS*. 
+
 ## Add your files
 
 - [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
