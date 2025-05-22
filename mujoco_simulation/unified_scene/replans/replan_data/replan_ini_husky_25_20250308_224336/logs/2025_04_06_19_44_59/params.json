@@ -1,0 +1,1 @@
+{"DEVICE": "cpu", "LEARNING_RATE": 0.001, "NUM_EPOCHS": 10, "NUM_THREADS": 8, "batch_size": 5, "avg_makespans": 242.53715498938428, "max_makespans": 568.0, "min_makespans": 74.0, "normalization_params": {"target_min": 0.0, "target_max": 968.0, "new_min": -1, "new_max": 1}}
